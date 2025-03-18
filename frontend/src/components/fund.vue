@@ -1,5 +1,5 @@
 <script setup>
-import {h, onBeforeMount, onBeforeUnmount, onMounted, reactive, ref} from "vue";
+import {computed, h, onBeforeMount, onBeforeUnmount, onMounted, reactive, ref} from "vue";
 import {Add, ChatboxOutline} from "@vicons/ionicons5";
 import {NButton, NEllipsis, NText, useMessage} from "naive-ui";
 import {
@@ -9,7 +9,7 @@ import {
   GetfundList,
   GetVersionInfo,
   UnFollowFund
-} from "../../wailsjs/go/main/App";
+} from "@wailsjs/go/main/App";
 import vueDanmaku from 'vue3-danmaku'
 
 const danmus = ref([])

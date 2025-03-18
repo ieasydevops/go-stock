@@ -5,21 +5,42 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"go-stock/backend/data"
 	"go-stock/backend/db"
 	"go-stock/backend/logger"
 	"go-stock/backend/models"
+	"os"
 	"strings"
 	"time"
+
+	"encoding/base64"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/coocood/freecache"
 	"github.com/duke-git/lancet/v2/convertor"
-	"github.com/duke-git/lancet/v2/mathutil"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/go-resty/resty/v2"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+//go:embed build/appicon.png
+var appIcon []byte
+
+var (
+	Version       = "1.0.0"
+	VersionCommit = "dev"
+	icon          []byte
+	alipay        []byte
+	wxpay         []byte
 )
 
 // App struct
@@ -37,14 +58,97 @@ func NewApp() *App {
 	}
 }
 
+func init() {
+	var err error
+	icon, err = os.ReadFile("frontend/dist/icon.png")
+	if err != nil {
+		logger.SugaredLogger.Errorf("Failed to read icon: %v", err)
+	}
+	alipay, err = os.ReadFile("frontend/dist/alipay.png")
+	if err != nil {
+		logger.SugaredLogger.Errorf("Failed to read alipay: %v", err)
+	}
+	wxpay, err = os.ReadFile("frontend/dist/wxpay.png")
+	if err != nil {
+		logger.SugaredLogger.Errorf("Failed to read wxpay: %v", err)
+	}
+	appIcon, err = os.ReadFile("build/appicon.png")
+	if err != nil {
+		logger.SugaredLogger.Errorf("Failed to read appIcon: %v", err)
+	}
+}
+
+func main() {
+	// Create an instance of the app structure
+	app := NewApp()
+
+	// Create application with options
+	err := wails.Run(&options.App{
+		Title:             "go-stock",
+		Width:             1024,
+		Height:            768,
+		MinWidth:          1024,
+		MinHeight:         768,
+		MaxWidth:          1920,
+		MaxHeight:         1080,
+		DisableResize:     false,
+		Fullscreen:        false,
+		Frameless:         false,
+		StartHidden:       false,
+		HideWindowOnClose: false,
+		BackgroundColour:  &options.RGBA{R: 255, G: 255, B: 255, A: 255},
+		Assets:            assets,
+		Menu:              nil,
+		Logger:            nil,
+		LogLevel:          0,
+		OnStartup:         app.startup,
+		OnDomReady:        app.domReady,
+		OnBeforeClose:     app.beforeClose,
+		OnShutdown:        app.shutdown,
+		WindowStartState:  options.Normal,
+		Bind: []interface{}{
+			app,
+		},
+		// Windows platform specific options
+		Windows: &windows.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			DisableWindowIcon:    false,
+			// DisableFramelessWindowDecorations: false,
+			WebviewUserDataPath: "",
+			ZoomFactor:          1.0,
+		},
+		// Mac platform specific options
+		Mac: &mac.Options{
+			TitleBar: &mac.TitleBar{
+				TitlebarAppearsTransparent: true,
+				HideTitle:                  false,
+				HideTitleBar:               false,
+				FullSizeContent:            false,
+				UseToolbar:                 false,
+				HideToolbarSeparator:       true,
+			},
+			Appearance:           mac.NSAppearanceNameDarkAqua,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			About: &mac.AboutInfo{
+				Title:   "go-stock",
+				Message: "",
+				Icon:    appIcon,
+			},
+		},
+	})
+
+	if err != nil {
+		logger.SugaredLogger.Fatal(err)
+	}
+}
+
 // startup is called at application startup
 func (a *App) startup(ctx context.Context) {
 	logger.SugaredLogger.Infof("Version:%s", Version)
 	// Perform your setup here
 	a.ctx = ctx
-
-	// TODO 创建系统托盘
-
 }
 
 func checkUpdate(a *App) {
@@ -90,7 +194,6 @@ func (a *App) domReady(ctx context.Context) {
 				go runtime.EventsEmit(a.ctx, "telegraph", telegraph)
 			}
 		}
-
 	}()
 	go runtime.EventsEmit(a.ctx, "telegraph", refreshTelegraphList())
 	go MonitorStockPrices(a)
@@ -110,14 +213,12 @@ func refreshTelegraphList() *[]string {
 	if err != nil {
 		return &[]string{}
 	}
-	//logger.SugaredLogger.Info(string(response.Body()))
 	document, err := goquery.NewDocumentFromReader(strings.NewReader(string(response.Body())))
 	if err != nil {
 		return &[]string{}
 	}
 	var telegraph []string
 	document.Find("div.telegraph-content-box").Each(func(i int, selection *goquery.Selection) {
-		//logger.SugaredLogger.Info(selection.Text())
 		telegraph = append(telegraph, selection.Text())
 	})
 	return &telegraph
@@ -160,16 +261,10 @@ func MonitorStockPrices(a *App) {
 	dest := &[]data.FollowedStock{}
 	db.Dao.Model(&data.FollowedStock{}).Find(dest)
 	total := float64(0)
-	//for _, follow := range *dest {
-	//	stockData := getStockInfo(follow)
-	//	total += stockData.ProfitAmountToday
-	//	price, _ := convertor.ToFloat(stockData.Price)
-	//	if stockData.PrePrice != price {
-	//		go runtime.EventsEmit(a.ctx, "stock_price", stockData)
-	//	}
-	//}
-
 	stockInfos := GetStockInfos(*dest...)
+	if stockInfos == nil {
+		return
+	}
 	for _, stockInfo := range *stockInfos {
 		total += stockInfo.ProfitAmountToday
 		price, _ := convertor.ToFloat(stockInfo.Price)
@@ -178,14 +273,10 @@ func MonitorStockPrices(a *App) {
 		}
 	}
 	if total != 0 {
-		// title := "go-stock " + time.Now().Format(time.DateTime) + fmt.Sprintf("  %.2f¥", total)
-		// systray.SetTooltip(title)
+		go runtime.EventsEmit(a.ctx, "realtime_profit", fmt.Sprintf("  %.2f", total))
 	}
-
-	go runtime.EventsEmit(a.ctx, "realtime_profit", fmt.Sprintf("  %.2f", total))
-	//runtime.WindowSetTitle(a.ctx, title)
-
 }
+
 func GetStockInfos(follows ...data.FollowedStock) *[]data.StockInfo {
 	stockCodes := make([]string, 0)
 	for _, follow := range follows {
@@ -208,6 +299,7 @@ func GetStockInfos(follows ...data.FollowedStock) *[]data.StockInfo {
 	}
 	return &stockInfos
 }
+
 func getStockInfo(follow data.FollowedStock) *data.StockInfo {
 	stockCode := follow.StockCode
 	stockDatas, err := data.NewStockDataApi().GetStockCodeRealTimeData(stockCode)
@@ -226,83 +318,75 @@ func addStockFollowData(follow data.FollowedStock, stockData *data.StockInfo) {
 	stockData.CostVolume = follow.Volume   //成本量
 	stockData.AlarmChangePercent = follow.AlarmChangePercent
 	stockData.AlarmPrice = follow.AlarmPrice
+}
 
-	//当前价格
-	price, _ := convertor.ToFloat(stockData.Price)
-	//当前价格为0 时 使用卖一价格作为当前价格
-	if price == 0 {
-		price, _ = convertor.ToFloat(stockData.A1P)
-	}
-	//当前价格依然为0 时 使用买一报价作为当前价格
-	if price == 0 {
-		price, _ = convertor.ToFloat(stockData.B1P)
-	}
+func (a *App) GetStockList(keyword string) []data.StockBasic {
+	return data.NewStockDataApi().GetStockList(keyword)
+}
 
-	//昨日收盘价
-	preClosePrice, _ := convertor.ToFloat(stockData.PreClose)
+func (a *App) GetFollowList() []data.FollowedStock {
+	dest := &[]data.FollowedStock{}
+	db.Dao.Model(&data.FollowedStock{}).Find(dest)
+	return *dest
+}
 
-	//当前价格依然为0 时 使用昨日收盘价为当前价格
-	if price == 0 {
-		price = preClosePrice
+func (a *App) Follow(code string) string {
+	dest := &data.FollowedStock{}
+	db.Dao.Model(&data.FollowedStock{}).Where("stock_code = ?", code).First(dest)
+	if dest.StockCode != "" {
+		return "已经关注了"
 	}
+	stockInfo := getStockInfo(data.FollowedStock{StockCode: code})
+	if stockInfo.Code == "" {
+		return "股票代码不存在"
+	}
+	price, _ := convertor.ToFloat(stockInfo.Price)
+	dest = &data.FollowedStock{
+		StockCode: code,
+		Price:     price,
+		Sort:      999,
+	}
+	db.Dao.Create(dest)
+	return "关注成功"
+}
 
-	//今日最高价
-	highPrice, _ := convertor.ToFloat(stockData.High)
-	if highPrice == 0 {
-		highPrice, _ = convertor.ToFloat(stockData.Open)
-	}
+func (a *App) UnFollow(code string) string {
+	db.Dao.Where("stock_code = ?", code).Delete(&data.FollowedStock{})
+	return "取消关注成功"
+}
 
-	//今日最低价
-	lowPrice, _ := convertor.ToFloat(stockData.Low)
-	if lowPrice == 0 {
-		lowPrice, _ = convertor.ToFloat(stockData.Open)
-	}
-	//开盘价
-	//openPrice, _ := convertor.ToFloat(stockData.Open)
+func (a *App) GetConfig() data.Settings {
+	return *data.NewSettingsApi(&data.Settings{}).GetConfig()
+}
 
-	if price > 0 {
-		stockData.ChangePrice = mathutil.RoundToFloat(price-preClosePrice, 2)
-		stockData.ChangePercent = mathutil.RoundToFloat(mathutil.Div(price-preClosePrice, preClosePrice)*100, 3)
-	}
-	if highPrice > 0 {
-		stockData.HighRate = mathutil.RoundToFloat(mathutil.Div(highPrice-preClosePrice, preClosePrice)*100, 3)
-	}
-	if lowPrice > 0 {
-		stockData.LowRate = mathutil.RoundToFloat(mathutil.Div(lowPrice-preClosePrice, preClosePrice)*100, 3)
-	}
-	if follow.CostPrice > 0 && follow.Volume > 0 {
-		if price > 0 {
-			stockData.Profit = mathutil.RoundToFloat(mathutil.Div(price-follow.CostPrice, follow.CostPrice)*100, 3)
-			stockData.ProfitAmount = mathutil.RoundToFloat((price-follow.CostPrice)*float64(follow.Volume), 2)
-			stockData.ProfitAmountToday = mathutil.RoundToFloat((price-preClosePrice)*float64(follow.Volume), 2)
-		} else {
-			//未开盘时当前价格为昨日收盘价
-			stockData.Profit = mathutil.RoundToFloat(mathutil.Div(preClosePrice-follow.CostPrice, follow.CostPrice)*100, 3)
-			stockData.ProfitAmount = mathutil.RoundToFloat((preClosePrice-follow.CostPrice)*float64(follow.Volume), 2)
-			stockData.ProfitAmountToday = mathutil.RoundToFloat((preClosePrice-preClosePrice)*float64(follow.Volume), 2)
-		}
+func (a *App) UpdateConfig(config data.Settings) string {
+	data.NewSettingsApi(&config).UpdateConfig()
+	return "更新成功"
+}
 
+func (a *App) GetVersionInfo() models.VersionInfo {
+	return models.VersionInfo{
+		Version: Version,
+		Icon:    base64.StdEncoding.EncodeToString(icon),
+		Alipay:  base64.StdEncoding.EncodeToString(alipay),
+		Wxpay:   base64.StdEncoding.EncodeToString(wxpay),
 	}
+}
 
-	//logger.SugaredLogger.Debugf("stockData:%+v", stockData)
-	if follow.Price != price && price > 0 {
-		go db.Dao.Model(follow).Where("stock_code = ?", follow.StockCode).Updates(map[string]interface{}{
-			"price": price,
-		})
-	}
+func (a *App) CheckUpdate() {
+	checkUpdate(a)
 }
 
 // beforeClose is called when the application is about to quit,
 // either by clicking the window close button or calling runtime.Quit.
 // Returning true will cause the application to continue, false will continue shutdown as normal.
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
-
 	dialog, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 		Type:         runtime.QuestionDialog,
 		Title:        "go-stock",
 		Message:      "确定关闭吗？",
 		Buttons:      []string{"确定"},
-		Icon:         icon,
+		Icon:         appIcon,
 		CancelButton: "取消",
 	})
 
@@ -320,140 +404,4 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 // shutdown is called at application termination
 func (a *App) shutdown(ctx context.Context) {
 	// Perform your teardown here
-	// systray.Quit()
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(stockCode string) *data.StockInfo {
-	//stockInfo, _ := data.NewStockDataApi().GetStockCodeRealTimeData(stockCode)
-
-	follow := &data.FollowedStock{
-		StockCode: stockCode,
-	}
-	db.Dao.Model(follow).Where("stock_code = ?", stockCode).First(follow)
-	stockInfo := getStockInfo(*follow)
-	return stockInfo
-}
-
-func (a *App) Follow(stockCode string) string {
-	return data.NewStockDataApi().Follow(stockCode)
-}
-
-func (a *App) UnFollow(stockCode string) string {
-	return data.NewStockDataApi().UnFollow(stockCode)
-}
-
-func (a *App) GetFollowList() []data.FollowedStock {
-	return data.NewStockDataApi().GetFollowList()
-}
-
-func (a *App) GetStockList(key string) []data.StockBasic {
-	return data.NewStockDataApi().GetStockList(key)
-}
-
-func (a *App) SetCostPriceAndVolume(stockCode string, price float64, volume int64) string {
-	return data.NewStockDataApi().SetCostPriceAndVolume(price, volume, stockCode)
-}
-
-func (a *App) SetAlarmChangePercent(val, alarmPrice float64, stockCode string) string {
-	return data.NewStockDataApi().SetAlarmChangePercent(val, alarmPrice, stockCode)
-}
-func (a *App) SetStockSort(sort int64, stockCode string) {
-	data.NewStockDataApi().SetStockSort(sort, stockCode)
-}
-func (a *App) SendDingDingMessage(message string, stockCode string) string {
-	ttl, _ := a.cache.TTL([]byte(stockCode))
-	logger.SugaredLogger.Infof("stockCode %s ttl:%d", stockCode, ttl)
-	if ttl > 0 {
-		return ""
-	}
-	err := a.cache.Set([]byte(stockCode), []byte("1"), 60*5)
-	if err != nil {
-		logger.SugaredLogger.Errorf("set cache error:%s", err.Error())
-		return ""
-	}
-	return data.NewDingDingAPI().SendDingDingMessage(message)
-}
-
-// SendDingDingMessageByType msgType 报警类型: 1 涨跌报警;2 股价报警 3 成本价报警
-func (a *App) SendDingDingMessageByType(message string, stockCode string, msgType int) string {
-	ttl, _ := a.cache.TTL([]byte(stockCode))
-	logger.SugaredLogger.Infof("stockCode %s ttl:%d", stockCode, ttl)
-	if ttl > 0 {
-		return ""
-	}
-	err := a.cache.Set([]byte(stockCode), []byte("1"), getMsgTypeTTL(msgType))
-	if err != nil {
-		logger.SugaredLogger.Errorf("set cache error:%s", err.Error())
-		return ""
-	}
-	stockInfo := &data.StockInfo{}
-	db.Dao.Model(stockInfo).Where("code = ?", stockCode).First(stockInfo)
-	go data.NewAlertWindowsApi("go-stock消息通知", getMsgTypeName(msgType), GenNotificationMsg(stockInfo), "").SendNotification()
-	return data.NewDingDingAPI().SendDingDingMessage(message)
-}
-
-func (a *App) NewChat(stock string) string {
-	return data.NewDeepSeekOpenAi().NewChat(stock)
-}
-
-func (a *App) NewChatStream(stock, stockCode string) {
-	msgs := data.NewDeepSeekOpenAi().NewChatStream(stock, stockCode)
-	for msg := range msgs {
-		runtime.EventsEmit(a.ctx, "newChatStream", msg)
-	}
-	runtime.EventsEmit(a.ctx, "newChatStream", "DONE")
-}
-
-func GenNotificationMsg(stockInfo *data.StockInfo) string {
-	Price, err := convertor.ToFloat(stockInfo.Price)
-	if err != nil {
-		Price = 0
-	}
-	PreClose, err := convertor.ToFloat(stockInfo.PreClose)
-	if err != nil {
-		PreClose = 0
-	}
-	var RF float64
-	if PreClose > 0 {
-		RF = mathutil.RoundToFloat(((Price-PreClose)/PreClose)*100, 2)
-	}
-
-	return "[" + stockInfo.Name + "] " + stockInfo.Price + " " + convertor.ToString(RF) + "% " + stockInfo.Date + " " + stockInfo.Time
-}
-
-// msgType : 1 涨跌报警(5分钟);2 股价报警(30分钟) 3 成本价报警(30分钟)
-func getMsgTypeTTL(msgType int) int {
-	switch msgType {
-	case 1:
-		return 60 * 5
-	case 2:
-		return 60 * 30
-	case 3:
-		return 60 * 30
-	default:
-		return 60 * 5
-	}
-}
-
-func getMsgTypeName(msgType int) string {
-	switch msgType {
-	case 1:
-		return "涨跌报警"
-	case 2:
-		return "股价报警"
-	case 3:
-		return "成本价报警"
-	default:
-		return "未知类型"
-	}
-}
-
-func (a *App) UpdateConfig(settings *data.Settings) string {
-	logger.SugaredLogger.Infof("UpdateConfig:%+v", settings)
-	return data.NewSettingsApi(settings).UpdateConfig()
-}
-
-func (a *App) GetConfig() *data.Settings {
-	return data.NewSettingsApi(&data.Settings{}).GetConfig()
 }

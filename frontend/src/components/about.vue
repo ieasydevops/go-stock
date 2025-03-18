@@ -3,8 +3,8 @@
 // preview.css相比style.css少了编辑器那部分样式
 import 'md-editor-v3/lib/preview.css';
 import {h, onMounted, ref} from 'vue';
-import {CheckUpdate, GetVersionInfo} from "../../wailsjs/go/main/App";
-import {EventsOn} from "../../wailsjs/runtime";
+import {CheckUpdate, GetVersionInfo} from "@wailsjs/go/main/App";
+import {EventsOn} from "@wailsjs/runtime";
 import {NAvatar, NButton, useNotification} from "naive-ui";
 const updateLog = ref('');
 const versionInfo = ref('');

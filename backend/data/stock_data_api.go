@@ -10,24 +10,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-stock/backend/db"
+	"go-stock/backend/logger"
+	"go-stock/backend/models"
+	"io"
+	"strings"
+	"time"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
-	"github.com/duke-git/lancet/v2/convertor"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/duke-git/lancet/v2/validator"
 	"github.com/go-resty/resty/v2"
-	"go-stock/backend/db"
-	"go-stock/backend/logger"
-	"go-stock/backend/models"
-	"golang.org/x/sys/windows/registry"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 	"gorm.io/gorm"
-	"gorm.io/plugin/soft_delete"
-	"io"
-	"strings"
-	"time"
 )
 
 const sinaStockUrl = "http://hq.sinajs.cn/rn=%d&list=%s"
@@ -38,44 +36,47 @@ type StockDataApi struct {
 	config *Settings
 }
 type StockInfo struct {
-	gorm.Model
-	Date     string  `json:"日期" gorm:"index"`
-	Time     string  `json:"时间" gorm:"index"`
-	Code     string  `json:"股票代码" gorm:"index"`
-	Name     string  `json:"股票名称" gorm:"index"`
-	PrePrice float64 `json:"上次当前价格"`
-	Price    string  `json:"当前价格"`
-	Volume   string  `json:"成交的股票数"`
-	Amount   string  `json:"成交金额"`
-	Open     string  `json:"今日开盘价"`
-	PreClose string  `json:"昨日收盘价"`
-	High     string  `json:"今日最高价"`
-	Low      string  `json:"今日最低价"`
-	Bid      string  `json:"竞买价"`
-	Ask      string  `json:"竞卖价"`
-	B1P      string  `json:"买一报价"`
-	B1V      string  `json:"买一申报"`
-	B2P      string  `json:"买二报价"`
-	B2V      string  `json:"买二申报"`
-	B3P      string  `json:"买三报价"`
-	B3V      string  `json:"买三申报"`
-	B4P      string  `json:"买四报价"`
-	B4V      string  `json:"买四申报"`
-	B5P      string  `json:"买五报价"`
-	B5V      string  `json:"买五申报"`
-	A1P      string  `json:"卖一报价"`
-	A1V      string  `json:"卖一申报"`
-	A2P      string  `json:"卖二报价"`
-	A2V      string  `json:"卖二申报"`
-	A3P      string  `json:"卖三报价"`
-	A3V      string  `json:"卖三申报"`
-	A4P      string  `json:"卖四报价"`
-	A4V      string  `json:"卖四申报"`
-	A5P      string  `json:"卖五报价"`
-	A5V      string  `json:"卖五申报"`
-	Market   string  `json:"市场"`
-	BA       string  `json:"盘前盘后"`
-	BAChange string  `json:"盘前盘后涨跌幅"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt models.DateTime
+	UpdatedAt models.DateTime
+	DeletedAt bool    `gorm:"softDelete:flag"`
+	Date      string  `json:"日期" gorm:"index"`
+	Time      string  `json:"时间" gorm:"index"`
+	Code      string  `json:"股票代码" gorm:"index"`
+	Name      string  `json:"股票名称" gorm:"index"`
+	PrePrice  float64 `json:"上次当前价格"`
+	Price     string  `json:"当前价格"`
+	Volume    string  `json:"成交的股票数"`
+	Amount    string  `json:"成交金额"`
+	Open      string  `json:"今日开盘价"`
+	PreClose  string  `json:"昨日收盘价"`
+	High      string  `json:"今日最高价"`
+	Low       string  `json:"今日最低价"`
+	Bid       string  `json:"竞买价"`
+	Ask       string  `json:"竞卖价"`
+	B1P       string  `json:"买一报价"`
+	B1V       string  `json:"买一申报"`
+	B2P       string  `json:"买二报价"`
+	B2V       string  `json:"买二申报"`
+	B3P       string  `json:"买三报价"`
+	B3V       string  `json:"买三申报"`
+	B4P       string  `json:"买四报价"`
+	B4V       string  `json:"买四申报"`
+	B5P       string  `json:"买五报价"`
+	B5V       string  `json:"买五申报"`
+	A1P       string  `json:"卖一报价"`
+	A1V       string  `json:"卖一申报"`
+	A2P       string  `json:"卖二报价"`
+	A2V       string  `json:"卖二申报"`
+	A3P       string  `json:"卖三报价"`
+	A3V       string  `json:"卖三申报"`
+	A4P       string  `json:"卖四报价"`
+	A4V       string  `json:"卖四申报"`
+	A5P       string  `json:"卖五报价"`
+	A5V       string  `json:"卖五申报"`
+	Market    string  `json:"市场"`
+	BA        string  `json:"盘前盘后"`
+	BAChange  string  `json:"盘前盘后涨跌幅"`
 
 	//以下是字段值需二次计算
 	ChangePercent     float64 `json:"changePercent"`     //涨跌幅
@@ -131,7 +132,10 @@ type TushareResponse struct {
 	act_ent_type	str	实控人企业性质*/
 
 type StockBasic struct {
-	gorm.Model
+	ID         uint `gorm:"primarykey"`
+	CreatedAt  models.DateTime
+	UpdatedAt  models.DateTime
+	DeletedAt  bool   `gorm:"softDelete:flag"`
 	TsCode     string `json:"ts_code" gorm:"index"`
 	Symbol     string `json:"symbol" gorm:"index"`
 	Name       string `json:"name" gorm:"index"`
@@ -161,9 +165,9 @@ type FollowedStock struct {
 	ChangePercent      float64
 	AlarmChangePercent float64
 	AlarmPrice         float64
-	Time               time.Time
+	Time               models.DateTime
 	Sort               int64
-	IsDel              soft_delete.DeletedAt `gorm:"softDelete:flag"`
+	IsDel              bool `gorm:"softDelete:flag"`
 }
 
 func (receiver FollowedStock) TableName() string {
@@ -340,27 +344,24 @@ func (receiver StockDataApi) GetStockCodeRealTimeData(StockCodes ...string) (*[]
 	return &stockInfos, err
 }
 
-func (receiver StockDataApi) Follow(stockCode string) string {
-	logger.SugaredLogger.Infof("Follow %s", stockCode)
-	stockInfos, err := receiver.GetStockCodeRealTimeData(stockCode)
-	if err != nil || len(*stockInfos) == 0 {
-		logger.SugaredLogger.Error(err)
-		return "关注失败"
+func (receiver StockDataApi) Follow(stockCode string, name string, volume int64, costPrice float64) *FollowedStock {
+	price := 0.0
+	if stockCode == "" {
+		return nil
 	}
-	stockInfo := (*stockInfos)[0]
-	price, _ := convertor.ToFloat(stockInfo.Price)
 	db.Dao.Model(&FollowedStock{}).FirstOrCreate(&FollowedStock{
 		StockCode:          stockCode,
-		Name:               stockInfo.Name,
+		Name:               name,
+		Volume:             volume,
+		CostPrice:          costPrice,
 		Price:              price,
-		Time:               time.Now(),
-		ChangePercent:      0,
 		PriceChange:        0,
 		Sort:               0,
 		AlarmChangePercent: 3,
 		AlarmPrice:         price + 1,
+		Time:               models.DateTime{Time: time.Now()},
 	}, &FollowedStock{StockCode: stockCode})
-	return "关注成功"
+	return nil
 }
 
 func (receiver StockDataApi) UnFollow(stockCode string) string {
@@ -625,31 +626,31 @@ func ParseSHSZStockData(datas []string) (map[string]string, error) {
 		return nil, fmt.Errorf("invalid data format")
 	}
 	/*
-		0：”大秦铁路”，股票名字；
-		1：”27.55″，今日开盘价；
-		2：”27.25″，昨日收盘价；
-		3：”26.91″，当前价格；
-		4：”27.55″，今日最高价；
-		5：”26.20″，今日最低价；
-		6：”26.91″，竞买价，即“买一”报价；
-		7：”26.92″，竞卖价，即“卖一”报价；
-		8：”22114263″，成交的股票数，由于股票交易以一百股为基本单位，所以在使用时，通常把该值除以一百；
-		9：”589824680″，成交金额，单位为“元”，为了一目了然，通常以“万元”为成交金额的单位，所以通常把该值除以一万；
-		10：”4695″，“买一”申报4695股，即47手；
-		11：”26.91″，“买一”报价；
-		12：”57590″，“买二”
-		13：”26.90″，“买二”
-		14：”14700″，“买三”
-		15：”26.89″，“买三”
-		16：”14300″，“买四”
-		17：”26.88″，“买四”
-		18：”15100″，“买五”
-		19：”26.87″，“买五”
-		20：”3100″，“卖一”申报3100股，即31手；
-		21：”26.92″，“卖一”报价
-		(22, 23), (24, 25), (26,27), (28, 29)分别为“卖二”至“卖四的情况”
-		30：”2008-01-11″，日期；
-		31：”15:05:32″，时间；*/
+		0："大秦铁路"，股票名字；
+		1："27.55"，今日开盘价；
+		2："27.25"，昨日收盘价；
+		3："26.91"，当前价格；
+		4："27.55"，今日最高价；
+		5："26.20"，今日最低价；
+		6："26.91"，竞买价，即"买一"报价；
+		7："26.92"，竞卖价，即"卖一"报价；
+		8："22114263"，成交的股票数，由于股票交易以一百股为基本单位，所以在使用时，通常把该值除以一百；
+		9："589824680"，成交金额，单位为"元"，为了便于阅读，通常以"万元"为成交金额的单位，所以通常把该值除以一万；
+		10："4695"，"买一"申报4695股，即47手；
+		11："26.91"，"买一"报价；
+		12："57590"，"买二"
+		13："26.90"，"买二"
+		14："14700"，"买三"
+		15："26.89"，"买三"
+		16："14300"，"买四"
+		17："26.88"，"买四"
+		18："15100"，"买五"
+		19："26.87"，"买五"
+		20："3100"，"卖一"申报3100股，即31手；
+		21："26.92"，"卖一"报价
+		(22, 23), (24, 25), (26,27), (28, 29)分别为"卖二"至"卖四的情况"
+		30："2008-01-11"，日期；
+		31："15:05:32"，时间；*/
 	result["股票代码"] = code
 	result["股票名称"] = parts[0]
 	result["今日开盘价"] = parts[1]
@@ -1020,48 +1021,4 @@ func SearchStockInfoByCode(stock string) *[]string {
 		}
 	})
 	return &messages
-}
-
-// checkChromeOnWindows 在 Windows 系统上检查谷歌浏览器是否安装
-func checkChromeOnWindows() (string, bool) {
-	key, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe`, registry.QUERY_VALUE)
-	if err != nil {
-		// 尝试在 WOW6432Node 中查找（适用于 64 位系统上的 32 位程序）
-		key, err = registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe`, registry.QUERY_VALUE)
-		if err != nil {
-			return "", false
-		}
-		defer key.Close()
-	}
-	defer key.Close()
-	path, _, err := key.GetStringValue("Path")
-	logger.SugaredLogger.Infof("Chrome安装路径：%s", path)
-	if err != nil {
-		return "", false
-	}
-	return path + "\\chrome.exe", true
-}
-
-// CheckBrowserOnWindows 在 Windows 系统上检查Edge浏览器是否安装，并返回安装路径
-func CheckBrowserOnWindows() (string, bool) {
-	if path, ok := checkChromeOnWindows(); ok {
-		return path, true
-	}
-
-	key, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe`, registry.QUERY_VALUE)
-	if err != nil {
-		// 尝试在 WOW6432Node 中查找（适用于 64 位系统上的 32 位程序）
-		key, err = registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe`, registry.QUERY_VALUE)
-		if err != nil {
-			return "", false
-		}
-		defer key.Close()
-	}
-	defer key.Close()
-	path, _, err := key.GetStringValue("Path")
-	logger.SugaredLogger.Infof("Edge安装路径：%s", path)
-	if err != nil {
-		return "", false
-	}
-	return path + "\\msedge.exe", true
 }

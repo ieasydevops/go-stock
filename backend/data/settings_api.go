@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"go-stock/backend/db"
 	"go-stock/backend/logger"
-	"gorm.io/gorm"
+	"go-stock/backend/models"
 )
 
 type Settings struct {
-	gorm.Model
+	ID                     uint `gorm:"primarykey"`
+	CreatedAt              models.DateTime
+	UpdatedAt              models.DateTime
+	DeletedAt              bool   `gorm:"softDelete:flag"`
 	TushareToken           string `json:"tushareToken"`
 	LocalPushEnable        bool   `json:"localPushEnable"`
 	DingPushEnable         bool   `json:"dingPushEnable"`

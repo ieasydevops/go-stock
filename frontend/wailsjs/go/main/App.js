@@ -6,20 +6,8 @@ export function CheckUpdate() {
   return window['go']['main']['App']['CheckUpdate']();
 }
 
-export function ExportConfig() {
-  return window['go']['main']['App']['ExportConfig']();
-}
-
 export function Follow(arg1) {
   return window['go']['main']['App']['Follow'](arg1);
-}
-
-export function FollowFund(arg1) {
-  return window['go']['main']['App']['FollowFund'](arg1);
-}
-
-export function GetAIResponseResult(arg1) {
-  return window['go']['main']['App']['GetAIResponseResult'](arg1);
 }
 
 export function GetConfig() {
@@ -30,10 +18,6 @@ export function GetFollowList() {
   return window['go']['main']['App']['GetFollowList']();
 }
 
-export function GetFollowedFund() {
-  return window['go']['main']['App']['GetFollowedFund']();
-}
-
 export function GetStockList(arg1) {
   return window['go']['main']['App']['GetStockList'](arg1);
 }
@@ -42,52 +26,8 @@ export function GetVersionInfo() {
   return window['go']['main']['App']['GetVersionInfo']();
 }
 
-export function GetfundList(arg1) {
-  return window['go']['main']['App']['GetfundList'](arg1);
-}
-
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
-}
-
-export function NewChatStream(arg1, arg2, arg3) {
-  return window['go']['main']['App']['NewChatStream'](arg1, arg2, arg3);
-}
-
-export function SaveAIResponseResult(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['SaveAIResponseResult'](arg1, arg2, arg3, arg4, arg5);
-}
-
-export function SendDingDingMessage(arg1, arg2) {
-  return window['go']['main']['App']['SendDingDingMessage'](arg1, arg2);
-}
-
-export function SendDingDingMessageByType(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SendDingDingMessageByType'](arg1, arg2, arg3);
-}
-
-export function SetAlarmChangePercent(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetAlarmChangePercent'](arg1, arg2, arg3);
-}
-
-export function SetCostPriceAndVolume(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetCostPriceAndVolume'](arg1, arg2, arg3);
-}
-
-export function SetStockSort(arg1, arg2) {
-  return window['go']['main']['App']['SetStockSort'](arg1, arg2);
-}
-
-export function ShareAnalysis(arg1, arg2) {
-  return window['go']['main']['App']['ShareAnalysis'](arg1, arg2);
-}
-
 export function UnFollow(arg1) {
   return window['go']['main']['App']['UnFollow'](arg1);
-}
-
-export function UnFollowFund(arg1) {
-  return window['go']['main']['App']['UnFollowFund'](arg1);
 }
 
 export function UpdateConfig(arg1) {

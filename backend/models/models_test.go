@@ -2,11 +2,13 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/duke-git/lancet/v2/strutil"
 	"go-stock/backend/db"
 	"go-stock/backend/logger"
 	"os"
 	"testing"
+	"time"
+
+	"github.com/duke-git/lancet/v2/strutil"
 )
 
 // @Author spark
@@ -46,4 +48,64 @@ func TestStockInfoHK(t *testing.T) {
 	}
 	db.Dao.Create(&hks)
 
+}
+
+func TestIsHKTradingTime(t *testing.T) {
+	// 测试非交易时间
+	nonTradingTimes := []time.Time{
+		time.Date(2024, 3, 18, 9, 0, 0, 0, time.Local),   // 9:00
+		time.Date(2024, 3, 18, 9, 29, 0, 0, time.Local),  // 9:29
+		time.Date(2024, 3, 18, 16, 0, 0, 0, time.Local),  // 16:00
+		time.Date(2024, 3, 18, 16, 30, 0, 0, time.Local), // 16:30
+	}
+
+	// 测试交易时间
+	tradingTimes := []time.Time{
+		time.Date(2024, 3, 18, 9, 30, 0, 0, time.Local),  // 9:30
+		time.Date(2024, 3, 18, 10, 0, 0, 0, time.Local),  // 10:00
+		time.Date(2024, 3, 18, 15, 30, 0, 0, time.Local), // 15:30
+		time.Date(2024, 3, 18, 15, 59, 0, 0, time.Local), // 15:59
+	}
+
+	for _, tt := range nonTradingTimes {
+		if IsHKTradingTime() {
+			t.Errorf("IsHKTradingTime() 在非交易时间 %v 返回了 true", tt)
+		}
+	}
+
+	for _, tt := range tradingTimes {
+		if !IsHKTradingTime() {
+			t.Errorf("IsHKTradingTime() 在交易时间 %v 返回了 false", tt)
+		}
+	}
+}
+
+func TestIsUSTradingTime(t *testing.T) {
+	// 测试非交易时间
+	nonTradingTimes := []time.Time{
+		time.Date(2024, 3, 18, 4, 0, 0, 0, time.Local),   // 4:00
+		time.Date(2024, 3, 18, 8, 0, 0, 0, time.Local),   // 8:00
+		time.Date(2024, 3, 18, 21, 0, 0, 0, time.Local),  // 21:00
+		time.Date(2024, 3, 18, 21, 29, 0, 0, time.Local), // 21:29
+	}
+
+	// 测试交易时间
+	tradingTimes := []time.Time{
+		time.Date(2024, 3, 18, 0, 0, 0, 0, time.Local),   // 0:00
+		time.Date(2024, 3, 18, 3, 59, 0, 0, time.Local),  // 3:59
+		time.Date(2024, 3, 18, 21, 30, 0, 0, time.Local), // 21:30
+		time.Date(2024, 3, 18, 23, 59, 0, 0, time.Local), // 23:59
+	}
+
+	for _, tt := range nonTradingTimes {
+		if IsUSTradingTime() {
+			t.Errorf("IsUSTradingTime() 在非交易时间 %v 返回了 true", tt)
+		}
+	}
+
+	for _, tt := range tradingTimes {
+		if !IsUSTradingTime() {
+			t.Errorf("IsUSTradingTime() 在交易时间 %v 返回了 false", tt)
+		}
+	}
 }

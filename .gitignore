@@ -111,3 +111,12 @@ dist
 /build/bin/*
 frontend/package.json.md5
 /build/us.json
+
+# 临时构建文件
+app_darwin.go.bak
+go-stock
+frontend/src/wailsjs/
+*.bak
+
+# 开发脚本
+scripts/dev.sh

@@ -2,21 +2,12 @@
 import {computed, h, onBeforeMount, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
 import {
   Follow,
-  GetAIResponseResult,
   GetConfig,
   GetFollowList,
   GetStockList,
   GetVersionInfo,
-  Greet,
-  NewChatStream,
-  SaveAIResponseResult,
-  SendDingDingMessageByType,
-  SetAlarmChangePercent,
-  SetCostPriceAndVolume,
-  SetStockSort,
-  UnFollow,
-  ShareAnalysis
-} from '../../wailsjs/go/main/App'
+  UnFollow
+} from "@wailsjs/go/main/App"
 import {
   NAvatar,
   NButton,
@@ -30,7 +21,7 @@ import {
   useModal,
   useNotification
 } from 'naive-ui'
-import {EventsEmit, EventsOn, WindowFullscreen, WindowReload, WindowUnfullscreen} from '../../wailsjs/runtime'
+import {EventsEmit, EventsOn, WindowFullscreen, WindowReload, WindowUnfullscreen} from '@wailsjs/runtime'
 import {
   Add,
   ChatboxOutline,
@@ -333,26 +324,24 @@ function isTradingTime() {
 }
 
 function AddStock(){
-  if (!data?.code) {
-    message.error("请输入有效股票代码");
-    return;
-  }
   if (!stocks.value.includes(data.code)) {
-      Follow(data.code).then(result => {
-        if(result==="关注成功"){
-          stocks.value.push(data.code)
-          message.success(result)
-          monitor();
-        }else{
-          message.error(result)
-        }
-      })
-  }else{
-    message.error("已经关注了")
+    Follow(data.code).then(result => {
+      if(result==="关注成功"){
+        stocks.value.push(data.code)
+        message.success(result)
+        GetFollowList().then(result => {
+          followList.value = result
+          for (const followedStock of result) {
+            if (!stocks.value.includes(followedStock.StockCode)) {
+              stocks.value.push(followedStock.StockCode)
+            }
+          }
+          monitor()
+        })
+      }
+    })
   }
 }
-
-
 
 function removeMonitor(code,name,key) {
   console.log("removeMonitor",name,code,key)
@@ -363,9 +352,7 @@ function removeMonitor(code,name,key) {
   delete results.value[key]
   console.log("removeMonitor-v",results.value[key])
 
-  UnFollow(code).then(result => {
-    message.success(result)
-  })
+  unFollow(code)
 }
 
 function SendDanmu(){
@@ -472,7 +459,7 @@ async function updateData(result) {
 async function monitor() {
   for (let code of stocks.value) {
    // console.log(code)
-    Greet(code).then(result => {
+    GetFollowList().then(result => {
       updateData(result)
     })
   }
@@ -810,6 +797,12 @@ function share(code,name){
         }, { default: () => msg })
       },
     })
+  })
+}
+
+function unFollow(code){
+  UnFollow(code).then(result => {
+    message.success(result)
   })
 }
 </script>

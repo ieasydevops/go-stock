@@ -1,10 +1,10 @@
 <script setup>
 
 import {onMounted, ref} from "vue";
-import {ExportConfig, GetConfig, SendDingDingMessageByType, UpdateConfig} from "../../wailsjs/go/main/App";
+import {ExportConfig, GetConfig, SendDingDingMessageByType, UpdateConfig} from "@wailsjs/go/main/App";
 import {useMessage} from "naive-ui";
-import {data} from "../../wailsjs/go/models";
-import {EventsEmit} from "../../wailsjs/runtime";
+import {data} from "@wailsjs/go/models";
+import {EventsEmit} from "@wailsjs/runtime";
 const message = useMessage()
 
 const formRef = ref(null)
