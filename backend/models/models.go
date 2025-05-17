@@ -195,3 +195,85 @@ type Resp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
+
+type PromptTemplate struct {
+	ID        int `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string `json:"name"`
+	Content   string `json:"content"`
+	Type      string `json:"type"`
+}
+
+func (p PromptTemplate) TableName() string {
+	return "prompt_templates"
+}
+
+type Prompt struct {
+	ID      int    `json:"ID"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+	Type    string `json:"type"`
+}
+
+type Telegraph struct {
+	gorm.Model
+	Time          string          `json:"time"`
+	Content       string          `json:"content"`
+	SubjectTags   []string        `json:"subjects" gorm:"-:all"`
+	StocksTags    []string        `json:"stocks" gorm:"-:all"`
+	IsRed         bool            `json:"isRed"`
+	Url           string          `json:"url"`
+	Source        string          `json:"source"`
+	TelegraphTags []TelegraphTags `json:"tags" gorm:"-:migration;foreignKey:TelegraphId"`
+}
+type TelegraphTags struct {
+	gorm.Model
+	TagId       uint `json:"tagId"`
+	TelegraphId uint `json:"telegraphId"`
+}
+
+func (t TelegraphTags) TableName() string {
+	return "telegraph_tags"
+}
+
+type Tags struct {
+	gorm.Model
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+func (p Tags) TableName() string {
+	return "tags"
+}
+
+func (p Telegraph) TableName() string {
+	return "telegraph_list"
+}
+
+type SinaStockInfo struct {
+	Symbol        string `json:"symbol"`
+	Name          string `json:"name"`
+	Engname       string `json:"engname"`
+	Tradetype     string `json:"tradetype"`
+	Lasttrade     string `json:"lasttrade"`
+	Prevclose     string `json:"prevclose"`
+	Open          string `json:"open"`
+	High          string `json:"high"`
+	Low           string `json:"low"`
+	Volume        string `json:"volume"`
+	Currentvolume string `json:"currentvolume"`
+	Amount        string `json:"amount"`
+	Ticktime      string `json:"ticktime"`
+	Buy           string `json:"buy"`
+	Sell          string `json:"sell"`
+	High52Week    string `json:"high_52week"`
+	Low52Week     string `json:"low_52week"`
+	Eps           string `json:"eps"`
+	Dividend      string `json:"dividend"`
+	StocksSum     string `json:"stocks_sum"`
+	Pricechange   string `json:"pricechange"`
+	Changepercent string `json:"changepercent"`
+	MarketValue   string `json:"market_value"`
+	PeRatio       string `json:"pe_ratio"`
+}

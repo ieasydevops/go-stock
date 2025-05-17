@@ -29,12 +29,12 @@ func NewTushareApi(config *Settings) *TushareApi {
 
 // GetDaily tushare A股日线行情
 func (receiver TushareApi) GetDaily(tsCode, startDate, endDate string, crawlTimeOut int64) string {
-	logger.SugaredLogger.Debugf("tushare daily request: ts_code=%s, start_date=%s, end_date=%s", tsCode, startDate, endDate)
+	//logger.SugaredLogger.Debugf("tushare daily request: ts_code=%s, start_date=%s, end_date=%s", tsCode, startDate, endDate)
 	fields := "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount"
 	resp := &TushareStockBasicResponse{}
 	stockType := getStockType(tsCode)
 	tsCodeNEW := getTsCode(tsCode)
-	logger.SugaredLogger.Debugf("tushare daily request: %s,tsCode:%s,tsCodeNEW:%s", stockType, tsCode, tsCodeNEW)
+	//logger.SugaredLogger.Debugf("tushare daily request: %s,tsCode:%s,tsCodeNEW:%s", stockType, tsCode, tsCodeNEW)
 	_, err := receiver.client.SetTimeout(time.Duration(crawlTimeOut)*time.Second).R().
 		SetHeader("content-type", "application/json").
 		SetBody(&TushareRequest{
@@ -66,7 +66,7 @@ func (receiver TushareApi) GetDaily(tsCode, startDate, endDate string, crawlTime
 			res += t + "\n"
 		}
 	}
-	logger.SugaredLogger.Debugf("tushare response: %s", res)
+	//logger.SugaredLogger.Debugf("tushare response: %s", res)
 	return res
 }
 

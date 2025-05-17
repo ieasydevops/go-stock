@@ -21,8 +21,8 @@ func NewDingDingAPI() *DingDingAPI {
 }
 
 func (DingDingAPI) SendDingDingMessage(message string) string {
-	if getConfig().DingPushEnable == false {
-		logger.SugaredLogger.Info("钉钉推送未开启")
+	if GetConfig().DingPushEnable == false {
+		//logger.SugaredLogger.Info("钉钉推送未开启")
 		return "钉钉推送未开启"
 	}
 	// 发送钉钉消息
@@ -37,11 +37,11 @@ func (DingDingAPI) SendDingDingMessage(message string) string {
 	logger.SugaredLogger.Infof("send dingding message: %s", resp.String())
 	return "发送钉钉消息成功"
 }
-func getConfig() *Settings {
+func GetConfig() *Settings {
 	return NewSettingsApi(&Settings{}).GetConfig()
 }
 func getApiURL() string {
-	return getConfig().DingRobot
+	return GetConfig().DingRobot
 }
 
 func (DingDingAPI) SendToDingDing(title, message string) string {

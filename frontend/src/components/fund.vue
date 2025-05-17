@@ -89,6 +89,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearInterval(ticker.value)
   ws.value.close()
+  message.destroyAll()
 })
 
 
@@ -180,10 +181,16 @@ function blinkBorder(findId){
 </script>
 
 <template>
-  <vue-danmaku v-model:danmus="danmus"  style="height:100px; width:100%;z-index: 9;position:absolute; top: 400px; pointer-events: none;" ></vue-danmaku>
+  <vue-danmaku v-model:danmus="danmus" useSlot style="height:100px; width:100%;z-index: 9;position:absolute; top: 400px; pointer-events: none;" >
+    <template v-slot:dm="{ index, danmu }">
+      <n-gradient-text type="info">
+        <n-icon :component="ChatboxOutline"/>{{ danmu }}
+      </n-gradient-text>
+    </template>
+  </vue-danmaku>
   <n-flex justify="start" >
     <n-grid :x-gap="8" :cols="3"  :y-gap="8" >
-      <n-gi :id="info.code+'_gi'" v-for="info in  followList" style="margin-left: 2px" onmouseover="this.style.border='1px solid  #3498db' " onmouseout="this.style.border='0px'">
+      <n-gi :id="info.code+'_gi'" v-for="info in  followList" style="margin-left: 2px" >
         <n-card :id="info.code" :title="formatterTitle(info.name)">
           <template #header-extra>
             <n-tag size="small"  :bordered="false" type="info">{{info.code}}</n-tag>&nbsp;
@@ -229,7 +236,7 @@ function blinkBorder(findId){
     <n-image :src="data.fenshiURL"   />
   </n-modal>
 
-  <div style="position: fixed;bottom: 18px;right:0;z-index: 10;width: 480px">
+  <div style="position: fixed;bottom: 18px;right:5px;z-index: 10;width: 400px">
     <n-input-group >
       <n-auto-complete  v-model:value="data.name"
                         :input-props="{
@@ -238,12 +245,14 @@ function blinkBorder(findId){
                         :options="options"
                         placeholder="基金名称/代码/弹幕"
                         clearable @update-value="getFundList" :on-select="onSelectFund"/>
-      <n-button type="primary" @click="AddFund">
-        <n-icon :component="Add"/> &nbsp;关注
-      </n-button>
-      <n-button type="error" @click="SendDanmu" v-if="data.enableDanmu">
-        <n-icon :component="ChatboxOutline"/> &nbsp;发送弹幕
-      </n-button>
+        <n-button   type="primary" @click="AddFund" >
+            <n-icon :component="Add"/>
+          关注
+        </n-button>
+        <n-button   type="info" @click="SendDanmu" v-if="data.enableDanmu" >
+            <n-icon :component="ChatboxOutline"/>
+          发送弹幕
+        </n-button>
     </n-input-group>
   </div>
 </template>

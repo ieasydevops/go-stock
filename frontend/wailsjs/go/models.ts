@@ -142,6 +142,153 @@ export namespace data {
 		    return a;
 		}
 	}
+	export class Group {
+	    ID: number;
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    name: string;
+	    sort: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Group(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.name = source["name"];
+	        this.sort = source["sort"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GroupStock {
+	    ID: number;
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    stockCode: string;
+	    groupId: number;
+	    groupInfo: Group;
+	
+	    static createFrom(source: any = {}) {
+	        return new GroupStock(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.stockCode = source["stockCode"];
+	        this.groupId = source["groupId"];
+	        this.groupInfo = this.convertValues(source["groupInfo"], Group);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FollowedStock {
+	    StockCode: string;
+	    Name: string;
+	    Volume: number;
+	    CostPrice: number;
+	    Price: number;
+	    PriceChange: number;
+	    ChangePercent: number;
+	    AlarmChangePercent: number;
+	    AlarmPrice: number;
+	    // Go type: time
+	    Time: any;
+	    Sort: number;
+	    Cron?: string;
+	    IsDel: number;
+	    Groups: GroupStock[];
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowedStock(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.StockCode = source["StockCode"];
+	        this.Name = source["Name"];
+	        this.Volume = source["Volume"];
+	        this.CostPrice = source["CostPrice"];
+	        this.Price = source["Price"];
+	        this.PriceChange = source["PriceChange"];
+	        this.ChangePercent = source["ChangePercent"];
+	        this.AlarmChangePercent = source["AlarmChangePercent"];
+	        this.AlarmPrice = source["AlarmPrice"];
+	        this.Time = this.convertValues(source["Time"], null);
+	        this.Sort = source["Sort"];
+	        this.Cron = source["Cron"];
+	        this.IsDel = source["IsDel"];
+	        this.Groups = this.convertValues(source["Groups"], GroupStock);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	export class Settings {
 	    ID: number;
@@ -171,6 +318,10 @@ export namespace data {
 	    kDays: number;
 	    enableDanmu: boolean;
 	    browserPath: string;
+	    enableNews: boolean;
+	    darkTheme: boolean;
+	    browserPoolSize: number;
+	    enableFund: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -202,6 +353,10 @@ export namespace data {
 	        this.kDays = source["kDays"];
 	        this.enableDanmu = source["enableDanmu"];
 	        this.browserPath = source["browserPath"];
+	        this.enableNews = source["enableNews"];
+	        this.darkTheme = source["darkTheme"];
+	        this.browserPoolSize = source["browserPoolSize"];
+	        this.enableFund = source["enableFund"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -352,6 +507,7 @@ export namespace data {
 	    sort: number;
 	    alarmChangePercent: number;
 	    alarmPrice: number;
+	    Groups: GroupStock[];
 	
 	    static createFrom(source: any = {}) {
 	        return new StockInfo(source);
@@ -412,6 +568,7 @@ export namespace data {
 	        this.sort = source["sort"];
 	        this.alarmChangePercent = source["alarmChangePercent"];
 	        this.alarmPrice = source["alarmPrice"];
+	        this.Groups = this.convertValues(source["Groups"], GroupStock);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -489,6 +646,24 @@ export namespace models {
 		    }
 		    return a;
 		}
+	}
+	export class Prompt {
+	    ID: number;
+	    name: string;
+	    content: string;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Prompt(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.name = source["name"];
+	        this.content = source["content"];
+	        this.type = source["type"];
+	    }
 	}
 	export class VersionInfo {
 	    ID: number;

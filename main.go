@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"go-stock/backend/db"
 	log "go-stock/backend/logger"
 	"go-stock/backend/models"
-
 	"os"
 	goruntime "runtime"
 	"runtime/debug"
@@ -56,31 +56,12 @@ var VersionCommit string
 func main() {
 	checkDir("data")
 	db.Init("")
-	db.Dao.AutoMigrate(&data.StockInfo{})
-	db.Dao.AutoMigrate(&data.StockBasic{})
-	db.Dao.AutoMigrate(&data.FollowedStock{})
-	db.Dao.AutoMigrate(&data.IndexBasic{})
-	db.Dao.AutoMigrate(&data.Settings{})
-	db.Dao.AutoMigrate(&models.AIResponseResult{})
-	db.Dao.AutoMigrate(&models.StockInfoHK{})
-	db.Dao.AutoMigrate(&models.StockInfoUS{})
-	db.Dao.AutoMigrate(&data.FollowedFund{})
-	db.Dao.AutoMigrate(&data.FundBasic{})
+	go AutoMigrate()
 
-	if stocksBin != nil && len(stocksBin) > 0 {
-		go initStockData()
-	}
-	log.SugaredLogger.Infof("init stocksBinHK %d", len(stocksBinHK))
-
-	if stocksBinHK != nil && len(stocksBinHK) > 0 {
-		go initStockDataHK()
-	}
-	log.SugaredLogger.Infof("init stocksBinUS %d", len(stocksBinUS))
-
-	if stocksBinUS != nil && len(stocksBinUS) > 0 {
-		go initStockDataUS()
-	}
-	updateBasicInfo()
+	//db.Dao.Model(&data.Group{}).Where("id = ?", 0).FirstOrCreate(&data.Group{
+	//	Name: "默认分组",
+	//	Sort: 0,
+	//})
 
 	// Create an instance of the app structure
 	app := NewApp()
@@ -120,32 +101,38 @@ func main() {
 	log.SugaredLogger.Info("version: " + Version)
 	log.SugaredLogger.Info("commit: " + VersionCommit)
 	// Create application with options
-	var width, height int
-	var err error
-
-	width, height, err = getScreenResolution()
+	//var width, height int
+	//var err error
+	//
+	width, _, err := getScreenResolution()
 	if err != nil {
 		log.SugaredLogger.Error("get screen resolution error")
-		width = 1366
-		height = 768
+		width = 1456
+		//height = 768
+	}
+
+	darkTheme := data.NewSettingsApi(&data.Settings{}).GetConfig().DarkTheme
+	backgroundColour := &options.RGBA{R: 255, G: 255, B: 255, A: 1}
+	if darkTheme {
+		backgroundColour = &options.RGBA{R: 27, G: 38, B: 54, A: 1}
 	}
 
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:                    "go-stock",
-		Width:                    width * 4 / 5,
-		Height:                   height * 4 / 5,
-		MinWidth:                 1024,
-		MinHeight:                768,
-		MaxWidth:                 width,
-		MaxHeight:                height,
+		Title:     "go-stock",
+		Width:     width * 4 / 5,
+		Height:    900,
+		MinWidth:  1456,
+		MinHeight: 768,
+		//MaxWidth:                 width,
+		//MaxHeight:                height,
 		DisableResize:            false,
 		Fullscreen:               false,
 		Frameless:                true,
 		StartHidden:              false,
 		HideWindowOnClose:        false,
 		EnableDefaultContextMenu: true,
-		BackgroundColour:         &options.RGBA{R: 255, G: 255, B: 255, A: 255},
+		BackgroundColour:         backgroundColour,
 		Assets:                   assets,
 		Menu:                     AppMenu,
 		Logger:                   nil,
@@ -156,6 +143,10 @@ func main() {
 		OnBeforeClose:            app.beforeClose,
 		OnShutdown:               app.shutdown,
 		WindowStartState:         options.Normal,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "go-stock",
+			OnSecondInstanceLaunch: OnSecondInstanceLaunch,
+		},
 		Bind: []interface{}{
 			app,
 		},
@@ -194,7 +185,29 @@ func main() {
 
 }
 
-func initStockDataUS() {
+func AutoMigrate() {
+	db.Dao.AutoMigrate(&data.StockInfo{})
+	db.Dao.AutoMigrate(&data.StockBasic{})
+	db.Dao.AutoMigrate(&data.FollowedStock{})
+	db.Dao.AutoMigrate(&data.IndexBasic{})
+	db.Dao.AutoMigrate(&data.Settings{})
+	db.Dao.AutoMigrate(&models.AIResponseResult{})
+	db.Dao.AutoMigrate(&models.StockInfoHK{})
+	db.Dao.AutoMigrate(&models.StockInfoUS{})
+	db.Dao.AutoMigrate(&data.FollowedFund{})
+	db.Dao.AutoMigrate(&data.FundBasic{})
+	db.Dao.AutoMigrate(&models.PromptTemplate{})
+	db.Dao.AutoMigrate(&data.Group{})
+	db.Dao.AutoMigrate(&data.GroupStock{})
+	db.Dao.AutoMigrate(&models.Tags{})
+	db.Dao.AutoMigrate(&models.Telegraph{})
+	db.Dao.AutoMigrate(&models.TelegraphTags{})
+}
+
+func initStockDataUS(ctx context.Context) {
+	defer func() {
+		go runtime.EventsEmit(ctx, "loadingMsg", "done")
+	}()
 	var v []models.StockInfoUS
 	err := json.Unmarshal(stocksBinUS, &v)
 	if err != nil {
@@ -202,18 +215,25 @@ func initStockDataUS() {
 		return
 	}
 	log.SugaredLogger.Infof("init stock data us %d", len(v))
-	for _, item := range v {
-		var count int64
-		db.Dao.Model(&models.StockInfoUS{}).Where("code = ?", item.Code).Count(&count)
-		if count > 0 {
-			log.SugaredLogger.Infof("stock data us %s exist", item.Code)
-			continue
+	var total int64
+	db.Dao.Model(&models.StockInfoUS{}).Count(&total)
+	if total != int64(len(v)) {
+		for _, item := range v {
+			var count int64
+			db.Dao.Model(&models.StockInfoUS{}).Where("code = ?", item.Code).Count(&count)
+			if count > 0 {
+				//log.SugaredLogger.Infof("stock data us %s exist", item.Code)
+				continue
+			}
+			db.Dao.Model(&models.StockInfoUS{}).Create(&item)
 		}
-		db.Dao.Model(&models.StockInfoUS{}).Create(&item)
 	}
 }
 
-func initStockDataHK() {
+func initStockDataHK(ctx context.Context) {
+	defer func() {
+		go runtime.EventsEmit(ctx, "loadingMsg", "done")
+	}()
 	var v []models.StockInfoHK
 	err := json.Unmarshal(stocksBinHK, &v)
 	if err != nil {
@@ -221,15 +241,20 @@ func initStockDataHK() {
 		return
 	}
 	log.SugaredLogger.Infof("init stock data hk %d", len(v))
-	for _, item := range v {
-		var count int64
-		db.Dao.Model(&models.StockInfoHK{}).Where("code = ?", item.Code).Count(&count)
-		if count > 0 {
-			log.SugaredLogger.Infof("stock data hk %s exist", item.Code)
-			continue
+	var total int64
+	db.Dao.Model(&models.StockInfoHK{}).Count(&total)
+	if total != int64(len(v)) {
+		for _, item := range v {
+			var count int64
+			db.Dao.Model(&models.StockInfoHK{}).Where("code = ?", item.Code).Count(&count)
+			if count > 0 {
+				//log.SugaredLogger.Infof("stock data hk %s exist", item.Code)
+				continue
+			}
+			db.Dao.Model(&models.StockInfoHK{}).Create(&item)
 		}
-		db.Dao.Model(&models.StockInfoHK{}).Create(&item)
 	}
+
 }
 
 func updateBasicInfo() {
@@ -241,7 +266,11 @@ func updateBasicInfo() {
 	}
 }
 
-func initStockData() {
+func initStockData(ctx context.Context) {
+	defer func() {
+		go runtime.EventsEmit(ctx, "loadingMsg", "done")
+	}()
+
 	log.SugaredLogger.Info("init stock data")
 	res := &data.TushareStockBasicResponse{}
 	err := json.Unmarshal(stocksBin, res)

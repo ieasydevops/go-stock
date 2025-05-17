@@ -1,9 +1,16 @@
 <script setup>
 
-import {onMounted, ref} from "vue";
-import {ExportConfig, GetConfig, SendDingDingMessageByType, UpdateConfig} from "../../wailsjs/go/main/App";
+import {computed, onBeforeUnmount, onMounted, ref} from "vue";
+import {
+  AddPrompt, DelPrompt,
+  ExportConfig,
+  GetConfig,
+  GetPromptTemplates,
+  SendDingDingMessageByType,
+  UpdateConfig
+} from "../../wailsjs/go/main/App";
 import {useMessage} from "naive-ui";
-import {data} from "../../wailsjs/go/models";
+import {data, models} from "../../wailsjs/go/models";
 import {EventsEmit} from "../../wailsjs/runtime";
 const message = useMessage()
 
@@ -35,8 +42,11 @@ const formValue = ref({
   },
   enableDanmu:false,
   browserPath: '',
+  enableNews:false,
+  darkTheme:true,
+  enableFund:false,
 })
-
+const promptTemplates=ref([])
 onMounted(()=>{
   GetConfig().then(res=>{
     formValue.value.ID = res.ID
@@ -65,13 +75,25 @@ onMounted(()=>{
     }
     formValue.value.enableDanmu = res.enableDanmu
     formValue.value.browserPath = res.browserPath
+    formValue.value.enableNews = res.enableNews
+    formValue.value.darkTheme = res.darkTheme
+    formValue.value.enableFund = res.enableFund
+
     console.log(res)
   })
   //message.info("加载完成")
+
+  GetPromptTemplates("","").then(res=>{
+    console.log(res)
+    promptTemplates.value=res
+  })
+})
+onBeforeUnmount(() => {
+  message.destroyAll()
 })
 
-
 function saveConfig(){
+
   let config= new data.Settings({
     ID:formValue.value.ID,
     dingPushEnable:formValue.value.dingPush.enable,
@@ -92,12 +114,17 @@ function saveConfig(){
     crawlTimeOut:formValue.value.openAI.crawlTimeOut,
     kDays:formValue.value.openAI.kDays,
     enableDanmu:formValue.value.enableDanmu,
-    browserPath:formValue.value.browserPath
+    browserPath:formValue.value.browserPath,
+    enableNews:formValue.value.enableNews,
+    darkTheme:formValue.value.darkTheme,
+    enableFund:formValue.value.enableFund,
   })
 
- //console.log("Settings",config)
+
+  //console.log("Settings",config)
   UpdateConfig(config).then(res=>{
     message.success(res)
+    EventsEmit("updateSettings", config);
   })
 }
 
@@ -165,6 +192,9 @@ function importConfig(){
       }
       formValue.value.enableDanmu = config.enableDanmu
       formValue.value.browserPath = config.browserPath
+      formValue.value.enableNews = config.enableNews
+      formValue.value.darkTheme = config.darkTheme
+      formValue.value.enableFund = config.enableFund
      // formRef.value.resetFields()
     };
     reader.readAsText(file);
@@ -187,45 +217,97 @@ window.onerror = function (event, source, lineno, colno, error) {
   //message.error("发生错误:"+event)
   return true;
 };
+
+const showManagePromptsModal=ref(false)
+const promptTypeOptions=[
+  {label:"模型系统Prompt",value:'模型系统Prompt'},
+  {label:"模型用户Prompt",value:'模型用户Prompt'},]
+const formPromptRef=ref(null)
+const formPrompt=ref({
+  ID:0,
+  Name:'',
+  Content:'',
+  Type:'',
+})
+function managePrompts(){
+  formPrompt.value.ID=0
+  showManagePromptsModal.value=true
+}
+function savePrompt(){
+  AddPrompt(formPrompt.value).then(res=>{
+    message.success(res)
+    GetPromptTemplates("","").then(res=>{
+      console.log(res)
+      promptTemplates.value=res
+    })
+    showManagePromptsModal.value=false
+  })
+}
+function editPrompt(prompt){
+  console.log(prompt)
+  formPrompt.value.ID=prompt.ID
+  formPrompt.value.Name=prompt.name
+  formPrompt.value.Content=prompt.content
+  formPrompt.value.Type=prompt.type
+  showManagePromptsModal.value=true
+}
+function deletePrompt(ID){
+  DelPrompt(ID).then(res=>{
+    message.success(res)
+    GetPromptTemplates("","").then(res=>{
+      console.log(res)
+      promptTemplates.value=res
+    })
+  })
+}
 </script>
 
 <template>
-  <n-flex justify="left" style="margin-top: 12px;padding-left: 12px">
-  <n-form ref="formRef"  :label-placement="'left'" :label-align="'left'">
-      <n-grid :cols="24" :x-gap="24" style="text-align: left">
+  <n-flex justify="left" style="margin-top: 12px;padding-left: 12px;">
+  <n-form ref="formRef"  :label-placement="'left'" :label-align="'left'" >
+      <n-grid :cols="24" :x-gap="24" style="text-align: left" :layout-shift-disabled="true">
         <n-gi :span="24">
-          <n-text type="default" style="font-size: 25px;font-weight: bold">基础设置</n-text>
+          <n-text type="success" style="font-size: 25px;font-weight: bold">基础设置</n-text>
         </n-gi>
-        <n-form-item-gi  :span="10" label="Tushare api token：" path="tushareToken" >
+        <n-form-item-gi  :span="10" label="Tushare &nbsp;&nbsp;Token：" path="tushareToken"  >
           <n-input  type="text" placeholder="Tushare api token"  v-model:value="formValue.tushareToken" clearable />
         </n-form-item-gi>
         <n-form-item-gi  :span="4" label="启动时更新A股/指数信息：" path="updateBasicInfoOnStart" >
           <n-switch v-model:value="formValue.updateBasicInfoOnStart" />
         </n-form-item-gi>
-        <n-form-item-gi  :span="5" label="数据刷新间隔(重启生效)：" path="refreshInterval" >
+        <n-form-item-gi  :span="4" label="数据刷新间隔：" path="refreshInterval" >
           <n-input-number v-model:value="formValue.refreshInterval" placeholder="请输入数据刷新间隔(秒)">
             <template #suffix>
               秒
             </template>
           </n-input-number>
         </n-form-item-gi>
-        <n-form-item-gi  :span="22" label="浏览器路径：" path="browserPath" >
-          <n-input  type="text" placeholder="浏览器路径"  v-model:value="formValue.browserPath" clearable />
+        <n-form-item-gi  :span="6" label="暗黑主题：" path="darkTheme" >
+          <n-switch v-model:value="formValue.darkTheme" />
+        </n-form-item-gi>
+        <n-form-item-gi  :span="10" label="浏览器安装路径：" path="browserPath" >
+          <n-input  type="text" placeholder="浏览器安装路径"  v-model:value="formValue.browserPath" clearable />
+        </n-form-item-gi>
+        <n-form-item-gi  :span="6" label="是否启用指数基金：" path="enableFund" >
+          <n-switch v-model:value="formValue.enableFund" />
         </n-form-item-gi>
       </n-grid>
 
         <n-grid :cols="24" :x-gap="24" style="text-align: left">
           <n-gi :span="24">
-            <n-text type="default" style="font-size: 25px;font-weight: bold">通知设置</n-text>
+            <n-text type="success" style="font-size: 25px;font-weight: bold">通知设置</n-text>
           </n-gi>
           <n-form-item-gi  :span="6" label="是否启用钉钉推送：" path="dingPush.enable" >
             <n-switch v-model:value="formValue.dingPush.enable" />
           </n-form-item-gi>
-          <n-form-item-gi  :span="6" label="是否启用本地推送：" path="localPush.enable" >
+          <n-form-item-gi  :span="6" label="是否启用本地推送：" path="localPush.enable"  >
             <n-switch v-model:value="formValue.localPush.enable" />
           </n-form-item-gi>
           <n-form-item-gi  :span="5" label="弹幕功能：" path="enableDanmu" >
             <n-switch v-model:value="formValue.enableDanmu" />
+          </n-form-item-gi>
+          <n-form-item-gi  :span="5" label="是否显示滚动快讯(重启生效)：" path="enableNews" >
+            <n-switch v-model:value="formValue.enableNews" />
           </n-form-item-gi>
           <n-form-item-gi :span="22"  v-if="formValue.dingPush.enable" label="钉钉机器人接口地址：" path="dingPush.dingRobot" >
             <n-input  placeholder="请输入钉钉机器人接口地址"  v-model:value="formValue.dingPush.dingRobot"/>
@@ -235,36 +317,36 @@ window.onerror = function (event, source, lineno, colno, error) {
 
     <n-grid :cols="24" :x-gap="24" style="text-align: left;">
       <n-gi :span="24">
-        <n-text type="default" style="font-size: 25px;font-weight: bold">OpenAI设置</n-text>
+        <n-text type="success" style="font-size: 25px;font-weight: bold">OpenAI设置</n-text>
       </n-gi>
       <n-form-item-gi  :span="3" label="是否启用AI诊股：" path="openAI.enable" >
         <n-switch v-model:value="formValue.openAI.enable" />
       </n-form-item-gi>
-      <n-form-item-gi :span="9"  v-if="formValue.openAI.enable" label="openAI 接口地址：" path="openAI.baseUrl">
+      <n-form-item-gi :span="9"  v-if="formValue.openAI.enable" label="openAI 接口地址：" path="openAI.baseUrl" >
         <n-input  type="text"  placeholder="AI接口地址"  v-model:value="formValue.openAI.baseUrl" clearable />
       </n-form-item-gi>
-      <n-form-item-gi  :span="5" v-if="formValue.openAI.enable" label="AI Timeout(秒)：" title="AI请求超时时间(秒)"  path="openAI.timeout">
+      <n-form-item-gi  :span="5" v-if="formValue.openAI.enable" label="AI Timeout(秒)：" title="AI请求超时时间(秒)"  path="openAI.timeout" >
         <n-input-number min="60" step="1" placeholder="AI请求超时时间(秒)"  v-model:value="formValue.openAI.timeout" />
       </n-form-item-gi>
-      <n-form-item-gi  :span="5" v-if="formValue.openAI.enable" label="Crawler Timeout(秒)：" title="资讯采集超时时间(秒)" path="openAI.crawlTimeOut">
+      <n-form-item-gi  :span="5" v-if="formValue.openAI.enable" label="Crawler Timeout(秒)：" title="资讯采集超时时间(秒)" path="openAI.crawlTimeOut" >
         <n-input-number min="30" step="1" placeholder="资讯采集超时时间(秒)"  v-model:value="formValue.openAI.crawlTimeOut" />
       </n-form-item-gi>
-      <n-form-item-gi  :span="12" v-if="formValue.openAI.enable" label="openAI 令牌(apiKey)："  path="openAI.apiKey">
+      <n-form-item-gi  :span="12" v-if="formValue.openAI.enable" label="openAI 令牌(apiKey)："  path="openAI.apiKey" >
         <n-input  type="text" placeholder="apiKey"  v-model:value="formValue.openAI.apiKey" clearable />
       </n-form-item-gi>
-      <n-form-item-gi :span="10"  v-if="formValue.openAI.enable" label="AI模型名称：" path="openAI.model">
+      <n-form-item-gi :span="10"  v-if="formValue.openAI.enable" label="AI模型名称：" path="openAI.model" >
         <n-input  type="text" placeholder="AI模型名称"  v-model:value="formValue.openAI.model" clearable />
       </n-form-item-gi>
       <n-form-item-gi :span="12"  v-if="formValue.openAI.enable" label="openAI temperature：" path="openAI.temperature" >
         <n-input-number  placeholder="temperature"  v-model:value="formValue.openAI.temperature"/>
       </n-form-item-gi>
-      <n-form-item-gi :span="5"  v-if="formValue.openAI.enable" label="openAI maxTokens："  path="openAI.maxTokens">
+      <n-form-item-gi :span="5"  v-if="formValue.openAI.enable" label="openAI maxTokens："  path="openAI.maxTokens" >
         <n-input-number  placeholder="maxTokens"  v-model:value="formValue.openAI.maxTokens"/>
       </n-form-item-gi>
-      <n-form-item-gi :span="5"  v-if="formValue.openAI.enable" title="天数越多消耗tokens越多" label="日K线数据(天)："  path="openAI.maxTokens">
+      <n-form-item-gi :span="5"  v-if="formValue.openAI.enable" title="天数越多消耗tokens越多" label="日K线数据(天)："  path="openAI.maxTokens" >
         <n-input-number  min="30" step="1" max="365"  placeholder="日K线数据(天)" title="天数越多消耗tokens越多" v-model:value="formValue.openAI.kDays"/>
       </n-form-item-gi>
-      <n-form-item-gi :span="22"  v-if="formValue.openAI.enable" label="模型系统 Prompt："  path="openAI.prompt">
+      <n-form-item-gi :span="11"  v-if="formValue.openAI.enable" label="模型系统 Prompt："  path="openAI.prompt" >
         <n-input v-model:value="formValue.openAI.prompt"
             type="textarea"
             :show-count="true"
@@ -275,20 +357,23 @@ window.onerror = function (event, source, lineno, colno, error) {
             }"
         />
       </n-form-item-gi>
-      <n-form-item-gi :span="22"  v-if="formValue.openAI.enable" label="模型用户 Prompt："   path="openAI.questionTemplate">
+      <n-form-item-gi :span="11"  v-if="formValue.openAI.enable" label="模型用户 Prompt："   path="openAI.questionTemplate" >
         <n-input v-model:value="formValue.openAI.questionTemplate"
             type="textarea"
             :show-count="true"
             placeholder="请输入用户prompt:例如{{stockName}}[{{stockCode}}]分析和总结"
             :autosize="{
-              minRows: 2,
-              maxRows: 5
+              minRows: 5,
+              maxRows: 8
             }"
         />
      </n-form-item-gi>
     </n-grid>
     <n-gi :span="24">
         <n-space justify="center">
+          <n-button  type="warning" @click="managePrompts">
+            添加提示词模板
+          </n-button>
         <n-button  type="primary" @click="saveConfig">
           保存
         </n-button>
@@ -301,7 +386,52 @@ window.onerror = function (event, source, lineno, colno, error) {
         </n-space>
     </n-gi>
   </n-form>
+    <n-gi :span="24"  v-if="promptTemplates.length>0"  v-for="prompt in promptTemplates" >
+      <n-flex justify="start">
+        <n-tag closable  @close="deletePrompt(prompt.ID)" @click="editPrompt(prompt)" :title="prompt.content" :type="prompt.type==='模型系统Prompt'?'success':'info'" :bordered="false"> {{prompt.name}} </n-tag>
+      </n-flex>
+    </n-gi>
   </n-flex>
+  <n-modal v-model:show="showManagePromptsModal" closable  :mask-closable="false">
+    <n-card
+        style="width: 800px;height: 600px;text-align: left"
+        :bordered="false"
+        :title="(formPrompt.ID>0?'修改':'添加')+'提示词'"
+        size="huge"
+        role="dialog"
+        aria-modal="true"
+    >
+      <n-form ref="formPromptRef"  :label-placement="'left'" :label-align="'left'" >
+        <n-form-item  label="名称">
+          <n-input v-model:value="formPrompt.Name" placeholder="请输入提示词名称" />
+        </n-form-item>
+        <n-form-item  label="类型">
+          <n-select v-model:value="formPrompt.Type" :options="promptTypeOptions" placeholder="请选择提示词类型" />
+        </n-form-item>
+        <n-form-item  label="内容">
+          <n-input v-model:value="formPrompt.Content"
+                   type="textarea"
+                   :show-count="true"
+                   placeholder="请输入prompt"
+                   :autosize="{
+              minRows: 12,
+              maxRows: 12,
+            }"
+          />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <n-flex justify="end">
+          <n-button type="primary" @click="savePrompt">
+            保存
+          </n-button>
+          <n-button type="warning" @click="showManagePromptsModal=false">
+            取消
+          </n-button>
+        </n-flex>
+      </template>
+    </n-card>
+  </n-modal>
 </template>
 
 <style scoped>

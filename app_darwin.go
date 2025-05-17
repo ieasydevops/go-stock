@@ -279,7 +279,8 @@ func addStockFollowData(follow data.FollowedStock, stockData *data.StockInfo) {
 			//未开盘时当前价格为昨日收盘价
 			stockData.Profit = mathutil.RoundToFloat(mathutil.Div(preClosePrice-follow.CostPrice, follow.CostPrice)*100, 3)
 			stockData.ProfitAmount = mathutil.RoundToFloat((preClosePrice-follow.CostPrice)*float64(follow.Volume), 2)
-			stockData.ProfitAmountToday = mathutil.RoundToFloat((preClosePrice-preClosePrice)*float64(follow.Volume), 2)
+			// 未开盘时，今日盈亏为 0
+			stockData.ProfitAmountToday = 0
 		}
 
 	}

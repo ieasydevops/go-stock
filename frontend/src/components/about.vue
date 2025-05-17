@@ -2,9 +2,9 @@
 // import { MdPreview } from 'md-editor-v3';
 // preview.css相比style.css少了编辑器那部分样式
 import 'md-editor-v3/lib/preview.css';
-import {h, onMounted, ref} from 'vue';
+import {h, onBeforeUnmount, onMounted, ref} from 'vue';
 import {CheckUpdate, GetVersionInfo} from "../../wailsjs/go/main/App";
-import {EventsOn} from "../../wailsjs/runtime";
+import {EventsOff, EventsOn} from "../../wailsjs/runtime";
 import {NAvatar, NButton, useNotification} from "naive-ui";
 const updateLog = ref('');
 const versionInfo = ref('');
@@ -23,8 +23,10 @@ onMounted(() => {
     wxpay.value=res.wxpay;
   });
 })
-
-
+onBeforeUnmount(() => {
+  notify.destroyAll()
+  EventsOff("updateVersion")
+})
 
 EventsOn("updateVersion",async (msg) => {
   const githubTimeStr = msg.published_at;

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/duke-git/lancet/v2/convertor"
+	"github.com/duke-git/lancet/v2/random"
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/go-resty/resty/v2"
 	"go-stock/backend/db"
@@ -22,13 +23,26 @@ import (
 //-----------------------------------------------------------------------------------
 
 func TestGetTelegraph(t *testing.T) {
-	GetTelegraphList(30)
+	db.Init("../../data/stock.db")
+
+	//telegraphs := GetTelegraphList(30)
+	//for _, telegraph := range *telegraphs {
+	//	logger.SugaredLogger.Info(telegraph)
+	//}
+	list := NewMarketNewsApi().GetNewTelegraph(30)
+	for _, telegraph := range *list {
+		logger.SugaredLogger.Infof("telegraph:%+v", telegraph)
+	}
 }
 
 func TestGetFinancialReports(t *testing.T) {
+	db.Init("../../data/stock.db")
 	//GetFinancialReports("sz000802", 30)
 	//GetFinancialReports("hk00927", 30)
-	GetFinancialReports("gb_aapl", 30)
+	//GetFinancialReports("gb_aapl", 30)
+	GetFinancialReportsByXUEQIU("sz000802", 30)
+	GetFinancialReportsByXUEQIU("gb_aapl", 30)
+	GetFinancialReportsByXUEQIU("hk00927", 30)
 
 }
 
@@ -46,10 +60,67 @@ func TestSearchStockInfoByCode(t *testing.T) {
 }
 
 func TestSearchStockPriceInfo(t *testing.T) {
-	//SearchStockPriceInfo("hk06030", 30)
-	//SearchStockPriceInfo("sh600171", 30)
-	SearchStockPriceInfo("gb_aapl", 30)
+	db.Init("../../data/stock.db")
+	//SearchStockPriceInfo("中信证券", "hk06030", 30)
+	//SearchStockPriceInfo("上海贝岭", "sh600171", 30)
+	SearchStockPriceInfo("苹果公司", "gb_aapl", 30)
+	//SearchStockPriceInfo("微创光电", "bj430198", 30)
+	getZSInfo("创业板指数", "sz399006", 30)
+	//getZSInfo("上证综合指数", "sh000001", 30)
+	//getZSInfo("沪深300指数", "sh000300", 30)
 
+}
+func TestGetStockMinutePriceData(t *testing.T) {
+	db.Init("../../data/stock.db")
+	data, date := NewStockDataApi().GetStockMinutePriceData("usTSLA.OQ")
+	logger.SugaredLogger.Infof("date:%s", date)
+	logger.SugaredLogger.Infof("%+#v", *data)
+}
+func TestGetKLineData(t *testing.T) {
+	db.Init("../../data/stock.db")
+	k := NewStockDataApi().GetKLineData("sh600171", "240", 30)
+	//for _, kline := range *k {
+	//	logger.SugaredLogger.Infof("%+#v", kline)
+	//}
+	jsonData, _ := json.Marshal(*k)
+	markdownTable, err := JSONToMarkdownTable(jsonData)
+	if err != nil {
+		logger.SugaredLogger.Errorf("json.Marshal error:%s", err.Error())
+	}
+	logger.SugaredLogger.Infof("markdownTable:\n%s", markdownTable)
+
+}
+func TestGetHK_KLineData(t *testing.T) {
+	db.Init("../../data/stock.db")
+	k := NewStockDataApi().GetHK_KLineData("hk01810", "day", 1)
+	jsonData, _ := json.Marshal(*k)
+	markdownTable, err := JSONToMarkdownTable(jsonData)
+	if err != nil {
+		logger.SugaredLogger.Errorf("json.Marshal error:%s", err.Error())
+	}
+	logger.SugaredLogger.Infof("markdownTable:\n%s", markdownTable)
+
+}
+
+func TestGetHKStockInfo(t *testing.T) {
+	db.Init("../../data/stock.db")
+	//NewStockDataApi().GetHKStockInfo(200)
+	//NewStockDataApi().GetSinaHKStockInfo()
+	//m:105,m:106,m:107  //美股
+	//m:128+t:3,m:128+t:4,m:128+t:1,m:128+t:2 //港股
+	for i := 1; i <= 592; i++ {
+		NewStockDataApi().getDCStockInfo("us", i, 20)
+		time.Sleep(time.Duration(random.RandInt(1, 3)) * time.Second)
+	}
+}
+
+func TestParseTxStockData(t *testing.T) {
+	str := "v_r_hk09660=\"100~地平线机器人-W~09660~6.340~5.690~5.800~210980204.0~0~0~6.340~0~0~0~0~0~0~0~0~0~6.340~0~0~0~0~0~0~0~0~0~210980204.0~2025/04/29\n14:14:52~0.650~11.42~6.450~5.710~6.340~210980204.0~1295585259.040~0~33.03~~0~0~13.01~702.2123~836.8986~HORIZONROBOT-W~0.00~10.380~3.320~1.00~-53.74~0~0~0~0~0~33.03~6.50~1.90~600~76.11~19.85~GP~19.70~11.51~0.63~-17.23~46.76~13200293682.00~11075904412.00~33.03~0.000~6.141~58.90~HKD~1~30\";"
+	//str = "v_sz002241=\"51~歌尔股份~002241~22.26~22.27~0.00~0~0~0~22.26~1004~0.00~0~0.00~0~0.00~0~0.00~0~22.26~1004~0.00~558~0.00~0~0.00~0~0.00~0~~20250509092233~-0.01~-0.04~0.00~0.00~22.26/0/0~0~0~0.00~28.21~~0.00~0.00~0.00~686.46~777.09~2.31~24.50~20.04~0.00~-558~0.00~41.44~29.16~~~1.24~0.0000~0.0000~0~\n~GP-A~-13.75~6.76~1.09~8.18~3.39~30.63~15.70~6.87~17.47~-23.95~3083811231~3490989083~-21.75~12.02~3083811231~~~39.36~-0.04~~CNY~0~~0.00~0\";"
+	str = "v_sz002241=\"51~歌尔股份~002241~21.92~22.27~22.14~109872~40211~69642~21.91~25~21.90~961~21.89~257~21.88~748~21.87~665~21.92~86~21.93~168~21.94~556~21.95~171~21.96~85~~20250509094209~-0.35~-1.57~22.16~21.84~21.92/109872/241183171~109872~24118~0.36~27.78~~22.16~21.84~1.44~675.97~765.22~2.27~24.50~20.04~2.57~1590~21.95~40.80~28.71~~~1.24~24118.3171~0.0000~0~\n~GP-A~-15.07~5.13~1.11~8.18~3.39~30.63~15.70~5.23~15.67~-25.11~3083811231~3490989083~42.72~10.31~3083811231~~~37.23~0.18~~CNY~0~~21.85~1952\";"
+	//str = "v_r_hk09660=\"100~地平线机器人-W~09660~6.860~7.000~7.010~21157200.0~0~0~6.860~0~0~0~0~0~0~0~0~0~6.860~0~0~0~0~0~0~0~0~0~21157200.0~2025/05/09\n09:43:13~-0.140~-2.00~7.030~6.730~6.860~21157200.0~144331073.000~0~35.74~~0~0~4.29~759.8070~905.5401~HORIZONROBOT-W~0.00~10.380~3.320~2.93~11.10~0~0~0~0~0~35.74~7.04~0.19~600~90.56~4.73~GP~19.70~11.51~17.26~48.48~13.58~13200293682.00~11075904412.00~35.74~0.000~6.822~71.93~HKD~1~30\";"
+	info, _ := ParseTxStockData(str)
+	logger.SugaredLogger.Infof("%+#v", info)
 }
 
 func TestGetRealTimeStockPriceInfo(t *testing.T) {
@@ -110,7 +181,7 @@ func TestParseFullSingleStockData(t *testing.T) {
 func TestNewStockDataApi(t *testing.T) {
 	db.Init("../../data/stock.db")
 	stockDataApi := NewStockDataApi()
-	datas, _ := stockDataApi.GetStockCodeRealTimeData("sh600859", "sh600745", "gb_tsla")
+	datas, _ := stockDataApi.GetStockCodeRealTimeData("sh600859", "sh600745", "gb_tsla", "hk09660", "hk00700")
 	for _, data := range *datas {
 		t.Log(data)
 	}
@@ -171,7 +242,7 @@ func TestReadFile(t *testing.T) {
 func TestFollowedList(t *testing.T) {
 	db.Init("../../data/stock.db")
 	stockDataApi := NewStockDataApi()
-	stockDataApi.GetFollowList()
+	stockDataApi.GetFollowList(1)
 
 }
 

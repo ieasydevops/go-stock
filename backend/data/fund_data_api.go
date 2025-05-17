@@ -26,7 +26,7 @@ type FundApi struct {
 func NewFundApi() *FundApi {
 	return &FundApi{
 		client: resty.New(),
-		config: getConfig(),
+		config: GetConfig(),
 	}
 }
 
@@ -107,7 +107,7 @@ func (f *FundApi) CrawlFundBasic(fundCode string) (*FundBasic, error) {
 
 	crawler = crawler.NewCrawler(ctx, crawler.crawlerBaseInfo)
 	url := fmt.Sprintf("%s/%s.html", crawler.crawlerBaseInfo.BaseUrl, fundCode)
-	logger.SugaredLogger.Infof("CrawlFundBasic url:%s", url)
+	//logger.SugaredLogger.Infof("CrawlFundBasic url:%s", url)
 
 	// 使用现有爬虫框架解析页面
 	htmlContent, ok := crawler.GetHtml(url, ".merchandiseDetail", true)
@@ -124,14 +124,14 @@ func (f *FundApi) CrawlFundBasic(fundCode string) (*FundBasic, error) {
 	// 解析基础信息
 	name := doc.Find(".merchandiseDetail .fundDetail-tit").First().Text()
 	fund.Name = strings.TrimSpace(strutil.ReplaceWithMap(name, map[string]string{"查看相关ETF>": ""}))
-	logger.SugaredLogger.Infof("基金名称:%s", fund.Name)
+	//logger.SugaredLogger.Infof("基金名称:%s", fund.Name)
 
 	doc.Find(".infoOfFund table td ").Each(func(i int, s *goquery.Selection) {
 		text := strutil.RemoveWhiteSpace(s.Text(), true)
-		logger.SugaredLogger.Infof("基金信息:%+v", text)
+		//logger.SugaredLogger.Infof("基金信息:%+v", text)
 		defer func() {
 			if r := recover(); r != nil {
-				logger.SugaredLogger.Errorf("panic: %v", r)
+				//logger.SugaredLogger.Errorf("panic: %v", r)
 			}
 		}()
 		splitEx := strutil.SplitEx(text, "：", true)
@@ -161,19 +161,19 @@ func (f *FundApi) CrawlFundBasic(fundCode string) (*FundBasic, error) {
 	//获取基金净值涨跌幅信息
 	doc.Find(".dataOfFund dl > dd").Each(func(i int, s *goquery.Selection) {
 		text := strutil.RemoveWhiteSpace(s.Text(), true)
-		logger.SugaredLogger.Infof("净值涨跌幅信息:%+v", text)
+		//logger.SugaredLogger.Infof("净值涨跌幅信息:%+v", text)
 		defer func() {
 			if r := recover(); r != nil {
-				logger.SugaredLogger.Errorf("panic: %v", r)
+				//logger.SugaredLogger.Errorf("panic: %v", r)
 			}
 		}()
 		splitEx := strutil.SplitAndTrim(text, "：", "%")
 		toFloat, err1 := convertor.ToFloat(splitEx[1])
 		if err1 != nil {
-			logger.SugaredLogger.Errorf("转换失败:%+v", err)
+			//logger.SugaredLogger.Errorf("转换失败:%+v", err)
 			return
 		}
-		logger.SugaredLogger.Infof("净值涨跌幅信息:%+v", toFloat)
+		//logger.SugaredLogger.Infof("净值涨跌幅信息:%+v", toFloat)
 		if strutil.ContainsAny(text, []string{"近1月"}) {
 			fund.NetGrowth1 = &toFloat
 		}
@@ -199,17 +199,17 @@ func (f *FundApi) CrawlFundBasic(fundCode string) (*FundBasic, error) {
 			fund.NetGrowthAll = &toFloat
 		}
 	})
-	doc.Find(".dataOfFund dl > dd.dataNums,.dataOfFund dl > dt").Each(func(i int, s *goquery.Selection) {
-		text := s.Text()
-		defer func() {
-			if r := recover(); r != nil {
-				logger.SugaredLogger.Errorf("panic: %v", r)
-			}
-		}()
-		logger.SugaredLogger.Infof("净值信息:%+v", text)
-	})
+	//doc.Find(".dataOfFund dl > dd.dataNums,.dataOfFund dl > dt").Each(func(i int, s *goquery.Selection) {
+	//	//text := s.Text()
+	//	defer func() {
+	//		if r := recover(); r != nil {
+	//			//logger.SugaredLogger.Errorf("panic: %v", r)
+	//		}
+	//	}()
+	//	//logger.SugaredLogger.Infof("净值信息:%+v", text)
+	//})
 
-	logger.SugaredLogger.Infof("基金信息:%+v", fund)
+	//logger.SugaredLogger.Infof("基金信息:%+v", fund)
 
 	count := int64(0)
 	db.Dao.Model(fund).Where("code=?", fund.Code).Count(&count)
@@ -275,7 +275,7 @@ func (f *FundApi) UnFollowFund(fundCode string) string {
 func (f *FundApi) AllFund() {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.SugaredLogger.Errorf("AllFund panic: %v", r)
+			//logger.SugaredLogger.Errorf("AllFund panic: %v", r)
 		}
 	}()
 
@@ -296,7 +296,7 @@ func (f *FundApi) AllFund() {
 			cnt++
 			name := text[0]
 			str := strutil.SplitAndTrim(name, "）", "（", "）")
-			logger.SugaredLogger.Infof("%d,基金信息 code:%s,name:%s", cnt, str[0], str[1])
+			//logger.SugaredLogger.Infof("%d,基金信息 code:%s,name:%s", cnt, str[0], str[1])
 			//go f.CrawlFundBasic(str[0])
 			fund := &FundBasic{
 				Code: str[0],
@@ -337,14 +337,14 @@ func (f *FundApi) CrawlFundNetEstimatedUnit(code string) {
 	}
 	if response.StatusCode() == 200 {
 		htmlContent := string(response.Body())
-		logger.SugaredLogger.Infof("htmlContent:%s", htmlContent)
+		//logger.SugaredLogger.Infof("htmlContent:%s", htmlContent)
 		if strings.Contains(htmlContent, "jsonpgz") {
 			htmlContent = strutil.Trim(htmlContent, "jsonpgz(", ");")
 			htmlContent = strutil.Trim(htmlContent, ");")
-			logger.SugaredLogger.Infof("基金净值信息:%s", htmlContent)
+			//logger.SugaredLogger.Infof("基金净值信息:%s", htmlContent)
 			err := json.Unmarshal([]byte(htmlContent), &fundNetUnitValue)
 			if err != nil {
-				logger.SugaredLogger.Errorf("json.Unmarshal error:%s", err.Error())
+				//logger.SugaredLogger.Errorf("json.Unmarshal error:%s", err.Error())
 				return
 			}
 			fund := &FollowedFund{
@@ -365,7 +365,7 @@ func (f *FundApi) CrawlFundNetEstimatedUnit(code string) {
 func (f *FundApi) CrawlFundNetUnitValue(code string) {
 	//	var fundNetUnitValue FundNetUnitValue
 	url := fmt.Sprintf("http://hq.sinajs.cn/rn=%d&list=f_%s", time.Now().UnixMilli(), code)
-	logger.SugaredLogger.Infof("url:%s", url)
+	//logger.SugaredLogger.Infof("url:%s", url)
 	response, err := f.client.SetTimeout(time.Duration(f.config.CrawlTimeOut)*time.Second).R().
 		SetHeader("Host", "hq.sinajs.cn").
 		SetHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0").
@@ -377,12 +377,12 @@ func (f *FundApi) CrawlFundNetUnitValue(code string) {
 	}
 	if response.StatusCode() == 200 {
 		data := string(GB18030ToUTF8(response.Body()))
-		logger.SugaredLogger.Infof("data:%s", data)
+		//logger.SugaredLogger.Infof("data:%s", data)
 		datas := strutil.SplitAndTrim(data, "=", "\"")
 		if len(datas) >= 2 {
 			//codex := strings.Split(datas[0], "hq_str_f_")[1]
 			parts := strutil.SplitAndTrim(datas[1], ",", "\"")
-			logger.SugaredLogger.Infof("parts:%s", parts)
+			//logger.SugaredLogger.Infof("parts:%s", parts)
 			val, err := convertor.ToFloat(parts[1])
 			if err != nil {
 				logger.SugaredLogger.Errorf("err:%s", err.Error())
