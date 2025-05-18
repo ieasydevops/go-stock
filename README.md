@@ -6,7 +6,8 @@
 [![star](https://gitcode.com/ArvinLovegood/go-stock/star/badge.svg)](https://gitcode.com/ArvinLovegood/go-stock)
 
 ### 🌟公众号
-![扫码_搜索联合传播样式-白色版.png](build/screenshot/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png)
+![扫码_搜索联合传播样式-白色版.png](build/screenshot/扫码_搜索联合传播样式-白色版.png)
+
 
 ### 📈 微信交流群
 
@@ -130,15 +131,7 @@
 
 ## 🐳 关于技术支持申明
 - 本软件基于开源技术构建，使用Wails、NaiveUI、Vue、AI大模型等开源项目。 技术上如有问题，可以先向对应的开源社区请求帮助。
-- 开源不易，本人精力和时间有限，如需一对一技术支持，请先赞助。联系微信(备注 技术支持)：ArvinLovegood
-
-<img src="./build/wx.jpg" width="301px" height="402px" alt="ArvinLovegood">
-
-
-| 技术支持方式                          | 赞助(元) | 
-|:--------------------------------|:-----:|
-| 加 QQ：，微信：ArvinLovegood | 100/次 |
-| 长期技术支持（不限次数，新功能优先体验等）            | 5000  |                  
+             
 
 
 
