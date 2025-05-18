@@ -3,8 +3,6 @@
 import {data} from '../models';
 import {models} from '../models';
 
-export function AddCronTask(arg1:data.FollowedStock):Promise<any>;
-
 export function AddGroup(arg1:data.Group):Promise<string>;
 
 export function AddPrompt(arg1:models.Prompt):Promise<string>;
@@ -60,6 +58,8 @@ export function GetfundList(arg1:string):Promise<Array<data.FundBasic>>;
 export function GlobalStockIndexes():Promise<Record<string, any>>;
 
 export function Greet(arg1:string):Promise<data.StockInfo>;
+
+export function NewChat(arg1:string):Promise<string>;
 
 export function NewChatStream(arg1:string,arg2:string,arg3:string,arg4:any):Promise<void>;
 

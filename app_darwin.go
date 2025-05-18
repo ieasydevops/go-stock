@@ -5,11 +5,13 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"go-stock/backend/data"
 	"go-stock/backend/db"
 	"go-stock/backend/logger"
 	"go-stock/backend/models"
+	"os"
 	"strings"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/duke-git/lancet/v2/convertor"
 	"github.com/duke-git/lancet/v2/mathutil"
 	"github.com/duke-git/lancet/v2/slice"
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/go-resty/resty/v2"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -42,6 +45,9 @@ func (a *App) startup(ctx context.Context) {
 	logger.SugaredLogger.Infof("Version:%s", Version)
 	// Perform your setup here
 	a.ctx = ctx
+
+	// 初始化macOS特定功能
+	macOSInit()
 
 	// TODO 创建系统托盘
 
@@ -344,8 +350,8 @@ func (a *App) UnFollow(stockCode string) string {
 	return data.NewStockDataApi().UnFollow(stockCode)
 }
 
-func (a *App) GetFollowList() []data.FollowedStock {
-	return data.NewStockDataApi().GetFollowList()
+func (a *App) GetFollowList(groupId int) *[]data.FollowedStock {
+	return data.NewStockDataApi().GetFollowList(groupId)
 }
 
 func (a *App) GetStockList(key string) []data.StockBasic {
@@ -395,15 +401,11 @@ func (a *App) SendDingDingMessageByType(message string, stockCode string, msgTyp
 }
 
 func (a *App) NewChat(stock string) string {
-	return data.NewDeepSeekOpenAi().NewChat(stock)
+	return ""
 }
 
-func (a *App) NewChatStream(stock, stockCode string) {
-	msgs := data.NewDeepSeekOpenAi().NewChatStream(stock, stockCode)
-	for msg := range msgs {
-		runtime.EventsEmit(a.ctx, "newChatStream", msg)
-	}
-	runtime.EventsEmit(a.ctx, "newChatStream", "DONE")
+func (a *App) NewChatStream(stock, stockCode, question string, sysPromptId *int) {
+	// macOS version implementation
 }
 
 func GenNotificationMsg(stockInfo *data.StockInfo) string {
@@ -457,4 +459,301 @@ func (a *App) UpdateConfig(settings *data.Settings) string {
 
 func (a *App) GetConfig() *data.Settings {
 	return data.NewSettingsApi(&data.Settings{}).GetConfig()
+}
+
+// GetGroupList 获取分组列表
+func (a *App) GetGroupList() []data.Group {
+	return data.NewStockGroupApi(db.Dao).GetGroupList()
+}
+
+// GetGroupStockList 获取分组中的股票列表
+func (a *App) GetGroupStockList(groupId int) []data.GroupStock {
+	return data.NewStockGroupApi(db.Dao).GetGroupStockByGroupId(groupId)
+}
+
+// AddStockGroup 添加股票到分组
+func (a *App) AddStockGroup(groupId int, stockCode string) string {
+	ok := data.NewStockGroupApi(db.Dao).AddStockGroup(groupId, stockCode)
+	if ok {
+		return "添加成功"
+	} else {
+		return "添加失败"
+	}
+}
+
+// RemoveStockGroup 从分组中移除股票
+func (a *App) RemoveStockGroup(code, name string, groupId int) string {
+	ok := data.NewStockGroupApi(db.Dao).RemoveStockGroup(code, name, groupId)
+	if ok {
+		return "移除成功"
+	} else {
+		return "移除失败"
+	}
+}
+
+// AddGroup 添加分组
+func (a *App) AddGroup(group data.Group) string {
+	ok := data.NewStockGroupApi(db.Dao).AddGroup(group)
+	if ok {
+		return "添加成功"
+	} else {
+		return "添加失败"
+	}
+}
+
+// RemoveGroup 移除分组
+func (a *App) RemoveGroup(groupId int) string {
+	ok := data.NewStockGroupApi(db.Dao).RemoveGroup(groupId)
+	if ok {
+		return "移除成功"
+	} else {
+		return "移除失败"
+	}
+}
+
+// GetStockMoneyTrendByDay 获取股票资金流向趋势（按天）
+func (a *App) GetStockMoneyTrendByDay(stockCode string, days int) []map[string]any {
+	res := data.NewMarketNewsApi().GetStockMoneyTrendByDay(stockCode, days)
+	slice.Reverse(res)
+	return res
+}
+
+// GetIndustryRank 获取行业排名
+func (a *App) GetIndustryRank(sort string, cnt int) []any {
+	res := data.NewMarketNewsApi().GetIndustryRank(sort, cnt)
+	return res["data"].([]any)
+}
+
+// GetIndustryMoneyRankSina 获取行业资金排名（新浪）
+func (a *App) GetIndustryMoneyRankSina(fenlei string) []map[string]any {
+	res := data.NewMarketNewsApi().GetIndustryMoneyRankSina(fenlei)
+	return res
+}
+
+// GetMoneyRankSina 获取资金排名（新浪）
+func (a *App) GetMoneyRankSina(sort string) []map[string]any {
+	res := data.NewMarketNewsApi().GetMoneyRankSina(sort)
+	return res
+}
+
+// GetTelegraphList 获取电报列表
+func (a *App) GetTelegraphList(source string) *[]*models.Telegraph {
+	telegraphs := data.NewMarketNewsApi().GetTelegraphList(source)
+	return telegraphs
+}
+
+// ReFleshTelegraphList 刷新电报列表
+func (a *App) ReFleshTelegraphList(source string) *[]*models.Telegraph {
+	data.NewMarketNewsApi().GetNewTelegraph(30)
+	data.NewMarketNewsApi().GetSinaNews(30)
+	telegraphs := data.NewMarketNewsApi().GetTelegraphList(source)
+	return telegraphs
+}
+
+// GlobalStockIndexes 获取全球股指
+func (a *App) GlobalStockIndexes() map[string]any {
+	return data.NewMarketNewsApi().GlobalStockIndexes(30)
+}
+
+// SummaryStockNews 总结股票新闻
+func (a *App) SummaryStockNews(question string, sysPromptId *int) {
+	msgs := data.NewDeepSeekOpenAi(a.ctx).NewSummaryStockNewsStream(question, sysPromptId)
+	for msg := range msgs {
+		runtime.EventsEmit(a.ctx, "summaryStockNews", msg)
+	}
+	runtime.EventsEmit(a.ctx, "summaryStockNews", "DONE")
+}
+
+// GetPromptTemplates 获取提示模板
+func (a *App) GetPromptTemplates(name, promptType string) *[]models.PromptTemplate {
+	return data.NewPromptTemplateApi().GetPromptTemplates(name, promptType)
+}
+
+// AddPrompt 添加提示模板
+func (a *App) AddPrompt(prompt models.Prompt) string {
+	promptTemplate := models.PromptTemplate{
+		ID:      prompt.ID,
+		Content: prompt.Content,
+		Name:    prompt.Name,
+		Type:    prompt.Type,
+	}
+	return data.NewPromptTemplateApi().AddPrompt(promptTemplate)
+}
+
+// DelPrompt 删除提示模板
+func (a *App) DelPrompt(id uint) string {
+	return data.NewPromptTemplateApi().DelPrompt(id)
+}
+
+// SetStockAICron 设置股票AI定时任务
+func (a *App) SetStockAICron(cronText, stockCode string) {
+	data.NewStockDataApi().SetStockAICron(cronText, stockCode)
+	if strutil.HasPrefixAny(stockCode, []string{"gb_"}) {
+		stockCode = strings.ToUpper(stockCode)
+		stockCode = strings.Replace(stockCode, "gb_", "us", 1)
+		stockCode = strings.Replace(stockCode, "GB_", "us", 1)
+	}
+}
+
+// GetfundList 获取基金列表
+func (a *App) GetfundList(key string) []data.FundBasic {
+	return data.NewFundApi().GetFundList(key)
+}
+
+// GetFollowedFund 获取已关注的基金
+func (a *App) GetFollowedFund() []data.FollowedFund {
+	return data.NewFundApi().GetFollowedFund()
+}
+
+// FollowFund 关注基金
+func (a *App) FollowFund(fundCode string) string {
+	return data.NewFundApi().FollowFund(fundCode)
+}
+
+// UnFollowFund 取消关注基金
+func (a *App) UnFollowFund(fundCode string) string {
+	return data.NewFundApi().UnFollowFund(fundCode)
+}
+
+// SaveAsMarkdown 保存为Markdown文件
+func (a *App) SaveAsMarkdown(stockCode, stockName string) string {
+	res := data.NewDeepSeekOpenAi(a.ctx).GetAIResponseResult(stockCode)
+	if res != nil && len(res.Content) > 100 {
+		analysisTime := res.CreatedAt.Format("2006-01-02_15_04_05")
+		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+			Title:           "保存为Markdown",
+			DefaultFilename: fmt.Sprintf("%s[%s]AI分析结果_%s.md", stockName, stockCode, analysisTime),
+			Filters: []runtime.FileFilter{
+				{
+					DisplayName: "Markdown",
+					Pattern:     "*.md;*.markdown",
+				},
+			},
+		})
+		if err != nil {
+			return err.Error()
+		}
+		err = os.WriteFile(file, []byte(res.Content), 0644)
+		return "已保存至：" + file
+	}
+	return "分析结果异常,无法保存。"
+}
+
+// ShareAnalysis 分享分析结果
+func (a *App) ShareAnalysis(stockCode, stockName string) string {
+	res := data.NewDeepSeekOpenAi(a.ctx).GetAIResponseResult(stockCode)
+	if res != nil && len(res.Content) > 100 {
+		analysisTime := res.CreatedAt.Format("2006/01/02")
+		logger.SugaredLogger.Infof("%s analysisTime:%s", res.CreatedAt, analysisTime)
+		response, err := resty.New().SetHeader("ua-x", "go-stock").R().SetFormData(map[string]string{
+			"text":         res.Content,
+			"stockCode":    stockCode,
+			"stockName":    stockName,
+			"analysisTime": analysisTime,
+		}).Post("http://go-stock.sparkmemory.top:16688/upload")
+		if err != nil {
+			return err.Error()
+		}
+		return response.String()
+	} else {
+		return "分析结果异常"
+	}
+}
+
+// GetAIResponseResult 获取AI响应结果
+func (a *App) GetAIResponseResult(stock string) *models.AIResponseResult {
+	return data.NewDeepSeekOpenAi(a.ctx).GetAIResponseResult(stock)
+}
+
+// GetVersionInfo 获取版本信息
+func (a *App) GetVersionInfo() *models.VersionInfo {
+	return &models.VersionInfo{
+		Version: Version,
+		Icon:    GetImageBase(icon),
+		Alipay:  GetImageBase(alipay),
+		Wxpay:   GetImageBase(wxpay),
+		Content: VersionCommit,
+	}
+}
+
+// GetImageBase 将字节数组转换为base64编码的图片
+func GetImageBase(bytes []byte) string {
+	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(bytes)
+}
+
+// SaveAIResponseResult 保存AI响应结果
+func (a *App) SaveAIResponseResult(stockCode, stockName, result, chatId, question string) {
+	data.NewDeepSeekOpenAi(a.ctx).SaveAIResponseResult(stockCode, stockName, result, chatId, question)
+}
+
+// GetStockKLine 获取股票K线数据
+func (a *App) GetStockKLine(stockCode, stockName string, days int64) *[]data.KLineData {
+	return data.NewStockDataApi().GetHK_KLineData(stockCode, "day", days)
+}
+
+// GetStockMinutePriceLineData 获取股票分钟价格数据
+func (a *App) GetStockMinutePriceLineData(stockCode, stockName string) map[string]any {
+	res := make(map[string]any, 4)
+	priceData, date := data.NewStockDataApi().GetStockMinutePriceData(stockCode)
+	res["priceData"] = priceData
+	res["date"] = date
+	res["stockName"] = stockName
+	res["stockCode"] = stockCode
+	return res
+}
+
+// GetStockCommonKLine 获取股票通用K线数据
+func (a *App) GetStockCommonKLine(stockCode, stockName string, days int64) *[]data.KLineData {
+	return data.NewStockDataApi().GetCommonKLineData(stockCode, "day", days)
+}
+
+// ExportConfig 导出配置
+func (a *App) ExportConfig() string {
+	config := data.NewSettingsApi(&data.Settings{}).Export()
+	file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:                "导出配置文件",
+		CanCreateDirectories: true,
+		DefaultFilename:      "config.json",
+	})
+	if err != nil {
+		logger.SugaredLogger.Errorf("导出配置文件失败:%s", err.Error())
+		return err.Error()
+	}
+	err = os.WriteFile(file, []byte(config), 0644)
+	if err != nil {
+		logger.SugaredLogger.Errorf("导出配置文件失败:%s", err.Error())
+		return err.Error()
+	}
+	return "导出成功:" + file
+}
+
+// CheckUpdate 检查更新
+func (a *App) CheckUpdate() {
+	releaseVersion := &models.GitHubReleaseVersion{}
+	_, err := resty.New().R().
+		SetResult(releaseVersion).
+		Get("https://api.github.com/repos/ArvinLovegood/go-stock/releases/latest")
+	if err != nil {
+		logger.SugaredLogger.Errorf("get github release version error:%s", err.Error())
+		return
+	}
+	logger.SugaredLogger.Infof("releaseVersion:%+v", releaseVersion.TagName)
+	if releaseVersion.TagName != Version {
+		tag := &models.Tag{}
+		_, err = resty.New().R().
+			SetResult(tag).
+			Get("https://api.github.com/repos/ArvinLovegood/go-stock/git/ref/tags/" + releaseVersion.TagName)
+		if err == nil {
+			releaseVersion.Tag = *tag
+		}
+		commit := &models.Commit{}
+		_, err = resty.New().R().
+			SetResult(commit).
+			Get(tag.Object.Url)
+		if err == nil {
+			releaseVersion.Commit = *commit
+		}
+
+		go runtime.EventsEmit(a.ctx, "updateVersion", releaseVersion)
+	}
 }

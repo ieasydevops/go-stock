@@ -142,6 +142,7 @@ export namespace data {
 		    return a;
 		}
 	}
+	
 	export class Group {
 	    ID: number;
 	    // Go type: time
@@ -230,66 +231,6 @@ export namespace data {
 		    return a;
 		}
 	}
-	export class FollowedStock {
-	    StockCode: string;
-	    Name: string;
-	    Volume: number;
-	    CostPrice: number;
-	    Price: number;
-	    PriceChange: number;
-	    ChangePercent: number;
-	    AlarmChangePercent: number;
-	    AlarmPrice: number;
-	    // Go type: time
-	    Time: any;
-	    Sort: number;
-	    Cron?: string;
-	    IsDel: number;
-	    Groups: GroupStock[];
-	
-	    static createFrom(source: any = {}) {
-	        return new FollowedStock(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.StockCode = source["StockCode"];
-	        this.Name = source["Name"];
-	        this.Volume = source["Volume"];
-	        this.CostPrice = source["CostPrice"];
-	        this.Price = source["Price"];
-	        this.PriceChange = source["PriceChange"];
-	        this.ChangePercent = source["ChangePercent"];
-	        this.AlarmChangePercent = source["AlarmChangePercent"];
-	        this.AlarmPrice = source["AlarmPrice"];
-	        this.Time = this.convertValues(source["Time"], null);
-	        this.Sort = source["Sort"];
-	        this.Cron = source["Cron"];
-	        this.IsDel = source["IsDel"];
-	        this.Groups = this.convertValues(source["Groups"], GroupStock);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	
-	
-	
 	export class Settings {
 	    ID: number;
 	    // Go type: time
