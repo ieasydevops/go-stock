@@ -5,6 +5,15 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"go-stock/backend/data"
+	"go-stock/backend/db"
+	log "go-stock/backend/logger"
+	"go-stock/backend/models"
+	"os"
+	goruntime "runtime"
+	"runtime/debug"
+	"time"
+
 	"github.com/duke-git/lancet/v2/convertor"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -14,14 +23,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"go-stock/backend/data"
-	"go-stock/backend/db"
-	log "go-stock/backend/logger"
-	"go-stock/backend/models"
-	"os"
-	goruntime "runtime"
-	"runtime/debug"
-	"time"
 )
 
 //go:embed frontend/dist
@@ -57,6 +58,7 @@ func main() {
 	checkDir("data")
 	db.Init("")
 	go AutoMigrate()
+	go InitDefaultData()
 
 	//db.Dao.Model(&data.Group{}).Where("id = ?", 0).FirstOrCreate(&data.Group{
 	//	Name: "默认分组",
@@ -202,6 +204,42 @@ func AutoMigrate() {
 	db.Dao.AutoMigrate(&models.Tags{})
 	db.Dao.AutoMigrate(&models.Telegraph{})
 	db.Dao.AutoMigrate(&models.TelegraphTags{})
+}
+
+// InitDefaultData creates default records in the database
+func InitDefaultData() {
+	// Create default group if none exists
+	var groupCount int64
+	db.Dao.Model(&data.Group{}).Count(&groupCount)
+	if groupCount == 0 {
+		db.Dao.Create(&data.Group{
+			Name: "默认分组",
+			Sort: 0,
+		})
+	}
+
+	// Create default settings if none exists
+	var settingsCount int64
+	db.Dao.Model(&data.Settings{}).Count(&settingsCount)
+	if settingsCount == 0 {
+		db.Dao.Create(&data.Settings{
+			RefreshInterval: 3,
+			DarkTheme:       true,
+			EnableFund:      true,
+			EnableNews:      true,
+		})
+	}
+
+	// Create default prompt templates if none exist
+	var promptCount int64
+	db.Dao.Model(&models.PromptTemplate{}).Count(&promptCount)
+	if promptCount == 0 {
+		db.Dao.Create(&models.PromptTemplate{
+			Name:    "默认提示",
+			Content: "分析股票的基本情况，包括公司业务、行业地位、财务状况和未来展望",
+			Type:    "stock",
+		})
+	}
 }
 
 func initStockDataUS(ctx context.Context) {
