@@ -9,12 +9,6 @@
 ![扫码_搜索联合传播样式-白色版.png](build/screenshot/扫码_搜索联合传播样式-白色版.png)
 
 
-### 📈 微信交流群
-
-![wechatgroup.png](build/screenshot/wechatgroup.png)
-
-
-
 ###  ✨ 简介
 - 本项目基于Wails和NaiveUI开发，结合AI大模型构建的股票分析工具。
 - 目前已支持A股，港股，美股，未来计划加入基金，ETF等支持。
