@@ -1,279 +1,131 @@
 package models
 
-import (
-	"gorm.io/gorm"
-	"gorm.io/plugin/soft_delete"
-	"time"
-)
+import "gorm.io/gorm"
 
-// @Author spark
-// @Date 2025/2/6 15:25
-// @Desc
-//-----------------------------------------------------------------------------------
-
-type GitHubReleaseVersion struct {
-	Url       string `json:"url"`
-	AssetsUrl string `json:"assets_url"`
-	UploadUrl string `json:"upload_url"`
-	HtmlUrl   string `json:"html_url"`
-	Id        int    `json:"id"`
-	Author    struct {
-		Login             string `json:"login"`
-		Id                int    `json:"id"`
-		NodeId            string `json:"node_id"`
-		AvatarUrl         string `json:"avatar_url"`
-		GravatarId        string `json:"gravatar_id"`
-		Url               string `json:"url"`
-		HtmlUrl           string `json:"html_url"`
-		FollowersUrl      string `json:"followers_url"`
-		FollowingUrl      string `json:"following_url"`
-		GistsUrl          string `json:"gists_url"`
-		StarredUrl        string `json:"starred_url"`
-		SubscriptionsUrl  string `json:"subscriptions_url"`
-		OrganizationsUrl  string `json:"organizations_url"`
-		ReposUrl          string `json:"repos_url"`
-		EventsUrl         string `json:"events_url"`
-		ReceivedEventsUrl string `json:"received_events_url"`
-		Type              string `json:"type"`
-		UserViewType      string `json:"user_view_type"`
-		SiteAdmin         bool   `json:"site_admin"`
-	} `json:"author"`
-	NodeId          string    `json:"node_id"`
-	TagName         string    `json:"tag_name"`
-	TargetCommitish string    `json:"target_commitish"`
-	Name            string    `json:"name"`
-	Draft           bool      `json:"draft"`
-	Prerelease      bool      `json:"prerelease"`
-	CreatedAt       time.Time `json:"created_at"`
-	PublishedAt     time.Time `json:"published_at"`
-	Assets          []struct {
-		Url      string `json:"url"`
-		Id       int    `json:"id"`
-		NodeId   string `json:"node_id"`
-		Name     string `json:"name"`
-		Label    string `json:"label"`
-		Uploader struct {
-			Login             string `json:"login"`
-			Id                int    `json:"id"`
-			NodeId            string `json:"node_id"`
-			AvatarUrl         string `json:"avatar_url"`
-			GravatarId        string `json:"gravatar_id"`
-			Url               string `json:"url"`
-			HtmlUrl           string `json:"html_url"`
-			FollowersUrl      string `json:"followers_url"`
-			FollowingUrl      string `json:"following_url"`
-			GistsUrl          string `json:"gists_url"`
-			StarredUrl        string `json:"starred_url"`
-			SubscriptionsUrl  string `json:"subscriptions_url"`
-			OrganizationsUrl  string `json:"organizations_url"`
-			ReposUrl          string `json:"repos_url"`
-			EventsUrl         string `json:"events_url"`
-			ReceivedEventsUrl string `json:"received_events_url"`
-			Type              string `json:"type"`
-			UserViewType      string `json:"user_view_type"`
-			SiteAdmin         bool   `json:"site_admin"`
-		} `json:"uploader"`
-		ContentType        string    `json:"content_type"`
-		State              string    `json:"state"`
-		Size               int       `json:"size"`
-		DownloadCount      int       `json:"download_count"`
-		CreatedAt          time.Time `json:"created_at"`
-		UpdatedAt          time.Time `json:"updated_at"`
-		BrowserDownloadUrl string    `json:"browser_download_url"`
-	} `json:"assets"`
-	TarballUrl string `json:"tarball_url"`
-	ZipballUrl string `json:"zipball_url"`
-	Body       string `json:"body"`
-	Tag        Tag    `json:"tag"`
-	Commit     Commit `json:"commit"`
-}
-
-type Tag struct {
-	Ref    string `json:"ref"`
-	NodeId string `json:"node_id"`
-	Url    string `json:"url"`
-	Object struct {
-		Sha  string `json:"sha"`
-		Type string `json:"type"`
-		Url  string `json:"url"`
-	} `json:"object"`
-}
-
-type Commit struct {
-	Sha     string `json:"sha"`
-	NodeId  string `json:"node_id"`
-	Url     string `json:"url"`
-	HtmlUrl string `json:"html_url"`
-	Author  struct {
-		Name  string    `json:"name"`
-		Email string    `json:"email"`
-		Date  time.Time `json:"date"`
-	} `json:"author"`
-	Committer struct {
-		Name  string    `json:"name"`
-		Email string    `json:"email"`
-		Date  time.Time `json:"date"`
-	} `json:"committer"`
-	Tree struct {
-		Sha string `json:"sha"`
-		Url string `json:"url"`
-	} `json:"tree"`
-	Message string `json:"message"`
-	Parents []struct {
-		Sha     string `json:"sha"`
-		Url     string `json:"url"`
-		HtmlUrl string `json:"html_url"`
-	} `json:"parents"`
-	Verification struct {
-		Verified   bool        `json:"verified"`
-		Reason     string      `json:"reason"`
-		Signature  interface{} `json:"signature"`
-		Payload    interface{} `json:"payload"`
-		VerifiedAt interface{} `json:"verified_at"`
-	} `json:"verification"`
-}
-
+// AIResponseResult represents an AI response result
 type AIResponseResult struct {
 	gorm.Model
-	ChatId    string                `json:"chatId"`
-	ModelName string                `json:"modelName"`
-	StockCode string                `json:"stockCode"`
-	StockName string                `json:"stockName"`
-	Question  string                `json:"question"`
-	Content   string                `json:"content"`
-	IsDel     soft_delete.DeletedAt `gorm:"softDelete:flag"`
+	StockCode string `json:"stockCode"`
+	StockName string `json:"stockName"`
+	Result    string `json:"result"`
+	ChatId    string `json:"chatId"`
+	Question  string `json:"question"`
+	ModelName string `json:"modelName"`
+	Content   string `json:"content"`
 }
-
-func (receiver AIResponseResult) TableName() string {
-	return "ai_response_result"
+type GitHubReleaseVersion struct {
+	TagName string `json:"tag_name"`
+	Tag     Tag    `json:"-"`
+	Commit  Commit `json:"-"`
 }
-
-type VersionInfo struct {
-	gorm.Model
-	Version        string                `json:"version"`
-	Content        string                `json:"content"`
-	Icon           string                `json:"icon"`
-	Alipay         string                `json:"alipay"`
-	Wxpay          string                `json:"wxpay"`
-	BuildTimeStamp int64                 `json:"buildTimeStamp"`
-	IsDel          soft_delete.DeletedAt `gorm:"softDelete:flag"`
+type Tag struct {
+	Object TagObject `json:"object"`
 }
-
-func (receiver VersionInfo) TableName() string {
-	return "version_info"
+type TagObject struct {
+	Url string `json:"url"`
 }
-
+type Commit struct {
+	TreeInfo Tree `json:"tree"`
+}
+type Tree struct{}
 type StockInfoHK struct {
 	gorm.Model
-	Code     string                `json:"code"`
-	Name     string                `json:"name"`
-	FullName string                `json:"fullName"`
-	EName    string                `json:"eName"`
-	IsDel    soft_delete.DeletedAt `gorm:"softDelete:flag"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
-
-func (receiver StockInfoHK) TableName() string {
-	return "stock_base_info_hk"
-}
-
 type StockInfoUS struct {
 	gorm.Model
-	Code     string                `json:"code"`
-	Name     string                `json:"name"`
-	FullName string                `json:"fullName"`
-	EName    string                `json:"eName"`
-	Exchange string                `json:"exchange"`
-	Type     string                `json:"type"`
-	IsDel    soft_delete.DeletedAt `gorm:"softDelete:flag"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
-
-func (receiver StockInfoUS) TableName() string {
-	return "stock_base_info_us"
+type Telegraph struct {
+	gorm.Model
+	Title         string          `json:"title"`
+	Source        string          `json:"source"`
+	Content       string          `json:"content"`
+	Time          string          `json:"time"`
+	Url           string          `json:"url"`
+	IsRed         bool            `json:"isRed"`
+	SubjectTags   []string        `json:"subjectTags" gorm:"-"`
+	StocksTags    []string        `json:"stocksTags" gorm:"-"`
+	TelegraphTags []TelegraphTags `json:"telegraphTags" gorm:"-"`
 }
-
-type Resp struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+type TelegraphTags struct {
+	gorm.Model
+	TelegraphId uint `json:"telegraphId"`
+	TagId       uint `json:"tagId"`
 }
-
 type PromptTemplate struct {
-	ID        int `gorm:"primarykey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Name      string `json:"name"`
-	Content   string `json:"content"`
-	Type      string `json:"type"`
+	gorm.Model
+	Name    string `json:"name"`
+	Content string `json:"content"`
+	Type    string `json:"type"`
+	ID      uint   `json:"id"`
 }
-
-func (p PromptTemplate) TableName() string {
-	return "prompt_templates"
-}
-
 type Prompt struct {
-	ID      int    `json:"ID"`
+	ID      uint   `json:"id"`
 	Name    string `json:"name"`
 	Content string `json:"content"`
 	Type    string `json:"type"`
 }
-
-type Telegraph struct {
-	gorm.Model
-	Time          string          `json:"time"`
-	Content       string          `json:"content"`
-	SubjectTags   []string        `json:"subjects" gorm:"-:all"`
-	StocksTags    []string        `json:"stocks" gorm:"-:all"`
-	IsRed         bool            `json:"isRed"`
-	Url           string          `json:"url"`
-	Source        string          `json:"source"`
-	TelegraphTags []TelegraphTags `json:"tags" gorm:"-:migration;foreignKey:TelegraphId"`
-}
-type TelegraphTags struct {
-	gorm.Model
-	TagId       uint `json:"tagId"`
-	TelegraphId uint `json:"telegraphId"`
-}
-
-func (t TelegraphTags) TableName() string {
-	return "telegraph_tags"
-}
-
 type Tags struct {
 	gorm.Model
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
-
-func (p Tags) TableName() string {
-	return "tags"
+type VersionInfo struct {
+	Version       string `json:"version"`
+	VersionCommit string `json:"versionCommit"`
+	GoVersion     string `json:"goVersion"`
+	Icon          string `json:"icon"`
+	Alipay        string `json:"alipay"`
+	Wxpay         string `json:"wxpay"`
+	Content       string `json:"content"`
 }
 
-func (p Telegraph) TableName() string {
-	return "telegraph_list"
-}
-
+// SinaStockInfo represents Sina stock information
 type SinaStockInfo struct {
-	Symbol        string `json:"symbol"`
-	Name          string `json:"name"`
-	Engname       string `json:"engname"`
-	Tradetype     string `json:"tradetype"`
-	Lasttrade     string `json:"lasttrade"`
-	Prevclose     string `json:"prevclose"`
-	Open          string `json:"open"`
-	High          string `json:"high"`
-	Low           string `json:"low"`
-	Volume        string `json:"volume"`
-	Currentvolume string `json:"currentvolume"`
-	Amount        string `json:"amount"`
-	Ticktime      string `json:"ticktime"`
-	Buy           string `json:"buy"`
-	Sell          string `json:"sell"`
-	High52Week    string `json:"high_52week"`
-	Low52Week     string `json:"low_52week"`
-	Eps           string `json:"eps"`
-	Dividend      string `json:"dividend"`
-	StocksSum     string `json:"stocks_sum"`
-	Pricechange   string `json:"pricechange"`
-	Changepercent string `json:"changepercent"`
-	MarketValue   string `json:"market_value"`
-	PeRatio       string `json:"pe_ratio"`
+	gorm.Model
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	Symbol     string `json:"symbol"`
+	Open       string `json:"open"`
+	Close      string `json:"close"`
+	Now        string `json:"now"`
+	High       string `json:"high"`
+	Low        string `json:"low"`
+	Buy        string `json:"buy"`
+	Sell       string `json:"sell"`
+	Turnover   string `json:"turnover"`
+	Volume     string `json:"volume"`
+	Bid1Volume string `json:"bid1Volume"`
+	Bid1       string `json:"bid1"`
+	Bid2Volume string `json:"bid2Volume"`
+	Bid2       string `json:"bid2"`
+	Bid3Volume string `json:"bid3Volume"`
+	Bid3       string `json:"bid3"`
+	Bid4Volume string `json:"bid4Volume"`
+	Bid4       string `json:"bid4"`
+	Bid5Volume string `json:"bid5Volume"`
+	Bid5       string `json:"bid5"`
+	Ask1Volume string `json:"ask1Volume"`
+	Ask1       string `json:"ask1"`
+	Ask2Volume string `json:"ask2Volume"`
+	Ask2       string `json:"ask2"`
+	Ask3Volume string `json:"ask3Volume"`
+	Ask3       string `json:"ask3"`
+	Ask4Volume string `json:"ask4Volume"`
+	Ask4       string `json:"ask4"`
+	Ask5Volume string `json:"ask5Volume"`
+	Ask5       string `json:"ask5"`
+	Date       string `json:"date"`
+	Time       string `json:"time"`
+}
+
+// Resp is used for OpenAI API responses
+type Resp struct {
+	Code    int    `json:"code"`
+	Msg     string `json:"msg"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }

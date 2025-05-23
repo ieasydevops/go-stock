@@ -543,13 +543,13 @@ export namespace models {
 	    UpdatedAt: any;
 	    // Go type: gorm
 	    DeletedAt: any;
-	    chatId: string;
-	    modelName: string;
 	    stockCode: string;
 	    stockName: string;
+	    result: string;
+	    chatId: string;
 	    question: string;
+	    modelName: string;
 	    content: string;
-	    IsDel: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AIResponseResult(source);
@@ -561,13 +561,13 @@ export namespace models {
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
 	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
-	        this.chatId = source["chatId"];
-	        this.modelName = source["modelName"];
 	        this.stockCode = source["stockCode"];
 	        this.stockName = source["stockName"];
+	        this.result = source["result"];
+	        this.chatId = source["chatId"];
 	        this.question = source["question"];
+	        this.modelName = source["modelName"];
 	        this.content = source["content"];
-	        this.IsDel = source["IsDel"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -589,7 +589,7 @@ export namespace models {
 		}
 	}
 	export class Prompt {
-	    ID: number;
+	    id: number;
 	    name: string;
 	    content: string;
 	    type: string;
@@ -600,27 +600,20 @@ export namespace models {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
+	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.content = source["content"];
 	        this.type = source["type"];
 	    }
 	}
 	export class VersionInfo {
-	    ID: number;
-	    // Go type: time
-	    CreatedAt: any;
-	    // Go type: time
-	    UpdatedAt: any;
-	    // Go type: gorm
-	    DeletedAt: any;
 	    version: string;
-	    content: string;
+	    versionCommit: string;
+	    goVersion: string;
 	    icon: string;
 	    alipay: string;
 	    wxpay: string;
-	    buildTimeStamp: number;
-	    IsDel: number;
+	    content: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new VersionInfo(source);
@@ -628,36 +621,14 @@ export namespace models {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ID = source["ID"];
-	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
-	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
-	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
 	        this.version = source["version"];
-	        this.content = source["content"];
+	        this.versionCommit = source["versionCommit"];
+	        this.goVersion = source["goVersion"];
 	        this.icon = source["icon"];
 	        this.alipay = source["alipay"];
 	        this.wxpay = source["wxpay"];
-	        this.buildTimeStamp = source["buildTimeStamp"];
-	        this.IsDel = source["IsDel"];
+	        this.content = source["content"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 
 }

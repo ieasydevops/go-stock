@@ -1,18 +1,20 @@
 package db
 
 import (
-	"github.com/glebarez/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"gorm.io/plugin/dbresolver"
 	"log"
 	"os"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
+// Dao is a global database handler
 var Dao *gorm.DB
 
-func Init(sqlitePath string) {
+// Init initializes the database
+func Init(path string) {
 	dbLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
@@ -23,33 +25,29 @@ func Init(sqlitePath string) {
 			LogLevel:                  logger.Info,
 		},
 	)
-	var openDb *gorm.DB
-	var err error
-	if sqlitePath == "" {
-		sqlitePath = "data/stock.db?cache=shared&mode=rwc&_journal_mode=WAL"
+
+	if path == "" {
+		path = "data/stock.db?cache=shared&mode=rwc&_journal_mode=WAL"
 	}
-	openDb, err = gorm.Open(sqlite.Open(sqlitePath), &gorm.Config{
+
+	var err error
+	Dao, err = gorm.Open(sqlite.Open(path), &gorm.Config{
 		Logger:                                   dbLogger,
 		DisableForeignKeyConstraintWhenMigrating: true,
 		SkipDefaultTransaction:                   true,
 		PrepareStmt:                              true,
 	})
-	//读写分离提高sqlite效率，防止锁库
-	openDb.Use(dbresolver.Register(
-		dbresolver.Config{
-			Replicas: []gorm.Dialector{sqlite.Open(sqlitePath)}},
-	))
 
 	if err != nil {
-		log.Fatalf("db connection error is %s", err.Error())
+		log.Fatalf("db connection error: %s", err.Error())
 	}
 
-	dbCon, err := openDb.DB()
+	sqlDB, err := Dao.DB()
 	if err != nil {
-		log.Fatalf("openDb.DB error is  %s", err.Error())
+		log.Fatalf("get DB error: %s", err.Error())
 	}
-	dbCon.SetMaxIdleConns(10)
-	dbCon.SetMaxOpenConns(100)
-	dbCon.SetConnMaxLifetime(time.Hour)
-	Dao = openDb
+
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 }

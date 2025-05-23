@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"go-stock/backend/db"
 	"go-stock/backend/logger"
+
 	"gorm.io/gorm"
 )
 
@@ -109,26 +110,20 @@ func (s SettingsApi) UpdateConfig() string {
 	}
 	return "保存成功！"
 }
-func (s SettingsApi) GetConfig() *Settings {
-	var settings Settings
-	db.Dao.Model(&Settings{}).First(&settings)
 
-	if settings.OpenAiEnable {
-		if settings.OpenAiApiTimeOut <= 0 {
-			settings.OpenAiApiTimeOut = 60 * 5
+// GetConfig gets the configuration
+func (s *SettingsApi) GetConfig() *Settings {
+	var settings Settings
+	result := db.Dao.First(&settings)
+	if result.Error != nil {
+		// Create default settings if none exist
+		settings = Settings{
+			RefreshInterval: 3,
+			DarkTheme:       true,
+			EnableFund:      true,
+			EnableNews:      true,
 		}
-		if settings.CrawlTimeOut <= 0 {
-			settings.CrawlTimeOut = 60
-		}
-		if settings.KDays < 30 {
-			settings.KDays = 120
-		}
-	}
-	if settings.BrowserPath == "" {
-		settings.BrowserPath, _ = CheckBrowserOnWindows()
-	}
-	if settings.BrowserPoolSize <= 0 {
-		settings.BrowserPoolSize = 1
+		db.Dao.Create(&settings)
 	}
 	return &settings
 }
